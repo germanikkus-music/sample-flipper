@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sample Flipper Guide</title>
+<style>
+  @page { size: 8.5in 11in; margin: 0; }
+  :root {
+    --bg: #0a0c11; --panel: #12151d; --line: #262c3b; --text: #e6e9f2; --dim: #9aa3b8;
+    --load: #22e5ff; --tempo: #ffe14d; --chop: #a35bff; --nav: #4d8dff;
+    --pads: #ff4fd8; --flip: #ffae3d; --seq: #3ddc84; --export: #ff6b6b;
+  }
+  * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  html, body { margin: 0; background: var(--bg); color: var(--text);
+    font: 11px/1.4 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif; }
+  .page { width: 8.5in; height: 11in; padding: 0.42in 0.45in; position: relative; overflow: hidden; page-break-after: always; }
+  .page:last-child { page-break-after: auto; }
+  .screenbar { display: none; }
+  @media screen {
+    body { padding: 12px 0 40px; background: #05070a; }
+    .page { margin: 0 auto 24px; background: var(--bg); border: 1px solid var(--line); border-radius: 12px; }
+    .screenbar { display: flex; gap: 16px; justify-content: center; margin: 4px 0 16px; font-size: 13px; }
+    .screenbar a { color: var(--load); text-decoration: none; border: 1px solid rgba(34,229,255,0.5); border-radius: 8px; padding: 6px 12px; }
+  }
+
+  .title { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 4px; }
+  .logo { font-weight: 300; letter-spacing: 0.22em; font-size: 24px; color: var(--load); }
+  .logo b { font-weight: 800; color: var(--chop); }
+  .maker { color: var(--dim); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; }
+  .sub { color: var(--dim); font-size: 12px; margin: 0 0 18px; }
+  h2 { font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--dim); margin: 0 0 10px; font-weight: 700; }
+  .pagehead { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px; }
+  .pagehead .logo { font-size: 15px; }
+
+  /* Flow */
+  .flow { display: grid; grid-template-columns: repeat(4, 1fr); gap: 22px 18px; margin-bottom: 22px; }
+  .step { position: relative; background: var(--panel); border: 1.5px solid var(--c); border-radius: 10px; padding: 10px 11px 11px;
+  }
+  .step .n { display: inline-flex; width: 20px; height: 20px; border-radius: 50%; background: var(--c); color: #0a0c11;
+    font-weight: 800; font-size: 11px; align-items: center; justify-content: center; margin-right: 6px; }
+  .step h3 { margin: 0 0 6px; font-size: 13px; color: var(--c); display: flex; align-items: center; }
+  .step p { margin: 0; color: var(--text); font-size: 10.5px; }
+  .step .where { margin-top: 6px; color: var(--dim); font-size: 9.5px; }
+  .step:not(.last)::after { content: "➜"; position: absolute; right: -16px; top: 50%; transform: translateY(-50%); color: var(--dim); font-size: 13px; }
+  .step.rowend::after { content: "↓"; right: 50%; top: auto; bottom: -19px; transform: translateX(50%); }
+
+  /* MPC path */
+  .path { display: grid; grid-template-columns: 1.15fr 24px 1fr 24px 1fr; align-items: stretch; margin-bottom: 22px; }
+  .box { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 10px 11px; }
+  .box h4 { margin: 0 0 6px; font-size: 12px; }
+  .arrow { display: flex; align-items: center; justify-content: center; color: var(--dim); font-size: 15px; }
+  .file { font-family: ui-monospace, Menlo, monospace; font-size: 9.5px; padding: 3px 6px; border-radius: 5px; margin: 3px 0;
+    border-left: 3px solid var(--c); background: #0e1118; }
+  .box p { margin: 4px 0 0; font-size: 10px; color: var(--dim); }
+  .box ol { margin: 0; padding-left: 16px; font-size: 10.5px; }
+  .box ol li { margin-bottom: 3px; }
+
+  /* Keyboard */
+  .keys { display: grid; grid-template-columns: 250px 1fr; gap: 20px; }
+  .padgrid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; }
+  .pad { aspect-ratio: 1; border-radius: 6px; border: 1px solid #2a3040; background: linear-gradient(160deg, #222734, #1b1f29);
+    padding: 5px; display: flex; flex-direction: column; justify-content: space-between; position: relative; }
+  .pad b { font-size: 10px; }
+  .pad kbd { align-self: flex-end; font: 700 14px ui-monospace, Menlo, monospace; color: var(--pads); }
+  .pad::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 3px; border-radius: 0 0 6px 6px; background: var(--pc); }
+  table.k { border-collapse: collapse; width: 100%; font-size: 10.5px; }
+  table.k td { padding: 5px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  table.k td:first-child { white-space: nowrap; width: 1%; }
+  kbd.k { font: 600 10px ui-monospace, Menlo, monospace; border: 1px solid #3a4256; border-bottom-width: 2px; border-radius: 4px; padding: 1px 5px; background: #181c26; }
+
+  /* Annotated screenshots */
+  .shot { position: relative; width: 100%; border-radius: 8px; overflow: hidden; border: 1px solid var(--line); }
+  .shot img { display: block; width: 100%; }
+  .shot .crop { position: relative; overflow: hidden; }
+  .shot .crop img { position: absolute; left: 0; }
+  .hl { position: absolute; border: 2px solid var(--c); border-radius: 6px; box-shadow: 0 0 0 1px rgba(0,0,0,0.6); }
+  .badge { position: absolute; width: 19px; height: 19px; border-radius: 50%; background: var(--c); color: #0a0c11; font-weight: 800; font-size: 10.5px;
+    display: flex; align-items: center; justify-content: center; box-shadow: 0 0 0 2px #0a0c11; z-index: 2; }
+
+  .legend { display: grid; grid-template-columns: 1fr 1fr; gap: 5px 16px; margin-top: 10px; }
+  .item { display: grid; grid-template-columns: 22px 1fr; gap: 6px; align-items: start; }
+  .item .badge { position: static; }
+  .item h5 { margin: 0; font-size: 11px; color: var(--c); }
+  .item p { margin: 1px 0 0; font-size: 10px; color: var(--text); }
+  .zones { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 0 0 10px; font-size: 10px; color: var(--dim); }
+  .zones span::before { content: ""; display: inline-block; width: 9px; height: 9px; border-radius: 2px; background: var(--c); margin-right: 5px; vertical-align: -1px; }
+  .foot { position: absolute; bottom: 0.3in; left: 0.45in; right: 0.45in; display: flex; justify-content: space-between; color: #5d6577; font-size: 9px; }
+</style>
+</head>
+<body>
+<nav class="screenbar">
+  <a href="../index.html">← Back to the app</a>
+  <a href="Sample%20Flipper%20Guide.pdf" download>Download PDF</a>
+</nav>
+
+<!-- PAGE 1: workflow -->
+<section class="page">
+  <div class="title">
+    <span class="logo">SAMPLE<b>FLIPPER</b></span>
+    <span class="maker">Germanikkus · Quick guide</span>
+  </div>
+  <p class="sub">Load a sample, chop it, flip the chops, build a new beat, and take it to your MPC Live III. The colors match the areas marked on pages 2 and 3.</p>
+
+  <h2>The workflow</h2>
+  <div class="flow">
+    <div class="step" style="--c: var(--load)"><h3><span class="n">1</span>Load</h3>
+      <p>Drop a WAV, AIFF, MP3, M4A or MP4 on the page, or press <b>Load sample</b>.</p>
+      <div class="where">Top right</div></div>
+    <div class="step" style="--c: var(--tempo)"><h3><span class="n">2</span>Tempo</h3>
+      <p>BPM comes from the file name (Splice: <i>OS_ES_<b>90</b>_…</i>) or is detected. Fix it with ½, ×2 or Tap.</p>
+      <div class="where">Sequencer bar</div></div>
+    <div class="step" style="--c: var(--chop)"><h3><span class="n">3</span>Chop</h3>
+      <p>Auto-chop on hits, cut into equal slices, or tap along. Drag markers to fine-tune.</p>
+      <div class="where">Waveform</div></div>
+    <div class="step rowend" style="--c: var(--pads)"><h3><span class="n">4</span>Play pads</h3>
+      <p>Every chop lands on a pad, A01 bottom-left like the MPC. Click, tap or use the keyboard.</p>
+      <div class="where">Pads</div></div>
+    <div class="step" style="--c: var(--flip)"><h3><span class="n">5</span>Flip</h3>
+      <p>Per chop: reverse, pitch, gain, fade in/out, choke. Changes are heard right away.</p>
+      <div class="where">Flip panel</div></div>
+    <div class="step" style="--c: var(--seq)"><h3><span class="n">6</span>Sequence</h3>
+      <p>Click steps to rearrange chops into a new 16-step beat. Add swing. Press Space to play.</p>
+      <div class="where">Step grid</div></div>
+    <div class="step" style="--c: var(--export)"><h3><span class="n">7</span>Export</h3>
+      <p>Chops as WAVs + MPC drum program + MPC pattern, or the beat as one WAV.</p>
+      <div class="where">Export panel</div></div>
+    <div class="step last" style="--c: var(--load)"><h3><span class="n">8</span>MPC</h3>
+      <p>Copy the folder to the MPC, load the <b>.xpm</b>, import the <b>.mpcpattern</b>.</p>
+      <div class="where">MPC Live III</div></div>
+  </div>
+
+  <h2>From the app to the MPC</h2>
+  <div class="path">
+    <div class="box">
+      <h4 style="color: var(--export)">Chops .zip contains one folder</h4>
+      <div class="file" style="--c: var(--pads)">MySample/MySample_01.wav … _16.wav</div>
+      <div class="file" style="--c: var(--chop)">MySample/MySample.xpm <span style="color:var(--dim)">drum program</span></div>
+      <div class="file" style="--c: var(--seq)">MySample/MySample 90bpm.mpcpattern</div>
+      <p>Flips are baked into the WAVs. 16- or 24-bit, same sample rate as your file.</p>
+    </div>
+    <div class="arrow">➜</div>
+    <div class="box">
+      <h4 style="color: var(--load)">Copy to the MPC</h4>
+      <ol>
+        <li>Unzip on your Mac.</li>
+        <li>Copy the whole folder to an SD card, USB drive or the MPC's drive.</li>
+        <li>Keep the WAVs next to the .xpm: it finds them by name.</li>
+      </ol>
+    </div>
+    <div class="arrow">➜</div>
+    <div class="box">
+      <h4 style="color: var(--seq)">On the Live III</h4>
+      <ol>
+        <li>Browser → load <b>MySample.xpm</b>. Chop 1 = pad A01.</li>
+        <li>Import the <b>.mpcpattern</b> into the track using that program.</li>
+        <li>Or just drop <b>Pattern .wav</b> on a track as an audio loop.</li>
+      </ol>
+    </div>
+  </div>
+
+  <h2>Keyboard</h2>
+  <div class="keys">
+    <div class="padgrid">
+      <div class="pad" style="--pc:#9b6bff"><b>A13</b><kbd>1</kbd></div><div class="pad" style="--pc:#a064ff"><b>A14</b><kbd>2</kbd></div><div class="pad" style="--pc:#a35bff"><b>A15</b><kbd>3</kbd></div><div class="pad" style="--pc:#a35bff"><b>A16</b><kbd>4</kbd></div>
+      <div class="pad" style="--pc:#7a7dff"><b>A09</b><kbd>Q</kbd></div><div class="pad" style="--pc:#7f86ff"><b>A10</b><kbd>W</kbd></div><div class="pad" style="--pc:#878cff"><b>A11</b><kbd>E</kbd></div><div class="pad" style="--pc:#8d84ff"><b>A12</b><kbd>R</kbd></div>
+      <div class="pad" style="--pc:#46aaff"><b>A05</b><kbd>A</kbd></div><div class="pad" style="--pc:#4f9fff"><b>A06</b><kbd>S</kbd></div><div class="pad" style="--pc:#5a96ff"><b>A07</b><kbd>D</kbd></div><div class="pad" style="--pc:#638cff"><b>A08</b><kbd>F</kbd></div>
+      <div class="pad" style="--pc:#22e5ff"><b>A01</b><kbd>Z</kbd></div><div class="pad" style="--pc:#28d5ff"><b>A02</b><kbd>X</kbd></div><div class="pad" style="--pc:#30c6ff"><b>A03</b><kbd>C</kbd></div><div class="pad" style="--pc:#3ab8ff"><b>A04</b><kbd>V</kbd></div>
+    </div>
+    <table class="k">
+      <tr><td><kbd class="k">1-4</kbd> <kbd class="k">Q-R</kbd> <kbd class="k">A-F</kbd> <kbd class="k">Z-V</kbd></td><td>Play the 16 pads. The keys sit in the same shape as the MPC's pads, A01 bottom-left.</td></tr>
+      <tr><td><kbd class="k">Space</kbd></td><td>Play / stop the pattern.</td></tr>
+      <tr><td><kbd class="k">P</kbd></td><td>Play / stop the whole sample.</td></tr>
+      <tr><td><kbd class="k">M</kbd></td><td>While the sample plays: drop a chop marker right now (tap-to-chop).</td></tr>
+      <tr><td><kbd class="k">Delete</kbd></td><td>Delete the selected marker. Right-click a marker also deletes it.</td></tr>
+      <tr><td>Mouse / trackpad</td><td>Scroll or pinch on the waveform to zoom, drag to pan, drag a marker to move it.</td></tr>
+      <tr><td>Phone</td><td>Tap pads, pinch to zoom, drag markers. Same features, stacked layout.</td></tr>
+    </table>
+  </div>
+  <div class="foot"><span>Sample Flipper · ~/MPC/sample-flipper · open index.html</span><span>1 / 3</span></div>
+</section>
+
+<!-- PAGE 2: top of the screen -->
+<section class="page">
+  <div class="pagehead"><span class="logo">SAMPLE<b>FLIPPER</b></span><h2 style="margin:0">The screen · top half</h2></div>
+  <div class="zones">
+    <span style="--c:var(--load)">Load</span><span style="--c:var(--chop)">Chop</span><span style="--c:var(--nav)">Navigate</span>
+    <span style="--c:var(--pads)">Pads</span><span style="--c:var(--flip)">Flip</span>
+  </div>
+  <div class="shot" style="width: 90%; margin: 0 auto"><div class="crop" id="crop1"></div></div>
+  <div class="legend" id="legend1"></div>
+  <div class="foot"><span>Sample Flipper · quick guide</span><span>2 / 3</span></div>
+</section>
+
+<!-- PAGE 3: bottom of the screen -->
+<section class="page">
+  <div class="pagehead"><span class="logo">SAMPLE<b>FLIPPER</b></span><h2 style="margin:0">The screen · bottom half</h2></div>
+  <div class="zones">
+    <span style="--c:var(--seq)">Sequence</span><span style="--c:var(--tempo)">Tempo</span><span style="--c:var(--export)">Export</span>
+  </div>
+  <div class="shot"><div class="crop" id="crop2"></div></div>
+  <div class="legend" id="legend2"></div>
+  <div class="foot"><span>Sample Flipper · quick guide</span><span>3 / 3</span></div>
+</section>
+
+<script>
+  // Positions in the app's CSS pixels (screenshot is 1180 px wide).
+  const SHOT_W = 1180;
+  const C = (v) => 'var(--' + v + ')';
+  const topHalf = { y0: 0, y1: 1022, el: 'crop1', legend: 'legend1', items: [
+    { n: 1, c: 'load', x: 838, y: 10, w: 108, h: 38, t: 'Load sample', d: 'Pick a file, or drop one anywhere on the page. The file name shows next to it.' },
+    { n: 2, c: 'load', x: 16, y: 56, w: 1148, h: 37, t: 'Status', d: 'What just happened: chops found, BPM and where it came from, export results, errors.' },
+    { n: 3, c: 'chop', x: 27, y: 111, w: 177, h: 38, t: '▶ Sample · Tap chop', d: 'Play the whole sample. Tap chop drops a marker on each tap while it plays (or press M).' },
+    { n: 4, c: 'chop', x: 205, y: 111, w: 200, h: 38, t: '+ Marker · Delete marker', d: 'With + Marker on, clicking the waveform adds a marker. Delete removes the selected one.' },
+    { n: 5, c: 'chop', x: 418, y: 111, w: 431, h: 38, t: 'Chop mode', d: 'Transients + Sensitivity (more = more chops) or Equal slices 4/8/16/32. Chop re-runs it; Clear starts over.' },
+    { n: 6, c: 'nav', x: 861, y: 111, w: 124, h: 38, t: 'Zoom − + Fit', d: 'Zoom the waveform. Fit shows the whole sample again.' },
+    { n: 7, c: 'chop', x: 29, y: 157, w: 1122, h: 220, t: 'Waveform', d: 'Each shaded region is a chop; the purple flags are markers, numbered by pad. Click a chop to hear it, drag a flag to move it.' },
+    { n: 8, c: 'nav', x: 29, y: 383, w: 1122, h: 58, t: 'Overview + info', d: 'The whole sample in miniature: click or drag to jump the zoomed view. Below: length, sample rate, chop count.' },
+    { n: 9, c: 'pads', x: 77, y: 515, w: 470, h: 465, t: '16 pads', d: 'One chop per pad, laid out like the MPC. Shows pad name, key, length and flips (REV, +5st…).' },
+    { n: 10, c: 'pads', x: 469, y: 477, w: 131, h: 31, t: 'Banks', d: 'Appear when there are more than 16 chops (up to 64: banks A–D).' },
+    { n: 11, c: 'flip', x: 623, y: 466, w: 541, h: 400, t: 'Flip panel', d: 'Edits the selected chop: Reverse, Choke (chops cut each other off), Pitch ±24 semitones, Gain, Fades. ▶ auditions it.' },
+    { n: 12, c: 'flip', x: 634, y: 805, w: 300, h: 40, t: 'Reset · Apply to all · Export chop', d: 'Undo this chop’s flips, copy them to every chop, or save just this chop as a WAV.' },
+  ]};
+  const bottomHalf = { y0: 1004, y1: 1730, el: 'crop2', legend: 'legend2', items: [
+    { n: 13, c: 'seq', x: 27, y: 1039, w: 70, h: 38, t: 'Play / Stop', d: 'Loops the 16-step pattern (Space does the same). Pads light up as they play.' },
+    { n: 14, c: 'tempo', x: 98, y: 1039, w: 320, h: 38, t: 'BPM · Detect · ½ · ×2 · Tap', d: 'Type a tempo, detect it from the audio, halve or double it, or tap it in.' },
+    { n: 15, c: 'seq', x: 430, y: 1039, w: 188, h: 38, t: 'Swing', d: 'Pushes every second 16th later for a shuffled feel. Applies to playback and exports.' },
+    { n: 16, c: 'seq', x: 628, y: 1039, w: 205, h: 38, t: 'Original · Flip it · Clear', d: 'Original puts chops where they sat in the loop. Flip it makes a random new arrangement.' },
+    { n: 17, c: 'seq', x: 29, y: 1086, w: 1122, h: 478, t: 'Step grid', d: 'Rows = pads, columns = 16th steps (1–4 are the beats). Click a cell to place that chop on that step.' },
+    { n: 18, c: 'export', x: 27, y: 1626, w: 614, h: 38, t: 'Export options', d: 'Bit depth, and whether the zip includes the MPC drum program (.xpm) and the sequence (.mpcpattern).' },
+    { n: 19, c: 'export', x: 643, y: 1626, w: 94, h: 38, t: 'Chops .zip', d: 'Every chop as a WAV with flips baked in, plus the .xpm and .mpcpattern, in one folder.' },
+    { n: 20, c: 'export', x: 749, y: 1626, w: 191, h: 38, t: 'Bars · Pattern .wav', d: 'Renders the beat to one WAV, exactly 1–8 bars long, ready to loop. Bars also sets the .mpcpattern length.' },
+  ]};
+
+  function build(spec) {
+    const crop = document.getElementById(spec.el);
+    const W = crop.getBoundingClientRect().width;
+    const k = W / SHOT_W;
+    crop.style.height = ((spec.y1 - spec.y0) * k) + 'px';
+    const img = document.createElement('img');
+    img.src = 'guide-screenshot.png';
+    img.style.width = W + 'px';
+    img.style.top = (-spec.y0 * k) + 'px';
+    crop.appendChild(img);
+    const legend = document.getElementById(spec.legend);
+    for (const it of spec.items) {
+      const hl = document.createElement('div');
+      hl.className = 'hl';
+      hl.style.cssText = `--c:${C(it.c)};left:${it.x * k}px;top:${(it.y - spec.y0) * k}px;width:${it.w * k}px;height:${it.h * k}px`;
+      crop.appendChild(hl);
+      const b = document.createElement('div');
+      b.className = 'badge';
+      b.textContent = it.n;
+      const bx = Math.max(2, it.x * k - 4), by = Math.max(2, (it.y - spec.y0) * k - 19);
+      b.style.cssText = `--c:${C(it.c)};left:${bx}px;top:${by}px`;
+      crop.appendChild(b);
+      const li = document.createElement('div');
+      li.className = 'item';
+      li.style.setProperty('--c', C(it.c));
+      li.innerHTML = `<div class="badge" style="--c:${C(it.c)}">${it.n}</div><div><h5>${it.t}</h5><p>${it.d}</p></div>`;
+      legend.appendChild(li);
+    }
+  }
+  build(topHalf);
+  build(bottomHalf);
+
+  // Shrink the letter-size pages to fit a phone screen (screen only).
+  function fit() {
+    // clientWidth is the layout width; innerWidth grows to fit wide content on phones.
+    const k = Math.min(1, (document.documentElement.clientWidth - 16) / 816);
+    document.querySelectorAll('.page').forEach(function (p) { p.style.zoom = k < 1 ? k : ''; });
+  }
+  if (window.matchMedia('screen').matches) {
+    fit();
+    window.addEventListener('resize', fit);
+  }
+  window.addEventListener('beforeprint', function () {
+    document.querySelectorAll('.page').forEach(function (p) { p.style.zoom = ''; });
+  });
+</script>
+</body>
+</html>

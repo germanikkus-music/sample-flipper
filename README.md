@@ -103,4 +103,13 @@ js/xpm.js             MPC drum program writer
 js/zip.js             tiny ZIP writer (no libraries)
 js/app.js             UI, pads, sequencer, exports
 Sample Flipper.command  double-click launcher for macOS
+docs/guide.html       color-coded guide (the Guide link in the app)
+docs/Sample Flipper Guide.pdf  the same guide as a 3-page PDF
+```
+
+To rebuild the PDF after editing `docs/guide.html`, open the guide in Chrome and
+print it (Save as PDF, Letter, no margins, background graphics on), or:
+
+```bash
+"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless=new --no-pdf-header-footer --virtual-time-budget=3000 --print-to-pdf="docs/Sample Flipper Guide.pdf" "file://$PWD/docs/guide.html"
 ```
