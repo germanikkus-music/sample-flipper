@@ -39,7 +39,7 @@ again. After that a double-click works.
 5. **Flip** the selected chop: reverse, pitch (±24 semitones, changes speed
    like an MPC tune), gain, fade in/out, and choke (choked chops cut each other
    off). **Apply to all** copies the settings to every chop.
-6. **Sequencer**: 1, 2, 4 or 8 bars (**Length**), set to the loop's own
+6. **Sequencer**: 1, 2 or 4 bars (**Length**), set to the loop's own
    length when you load it, so the whole loop fits. The grid shows one bar at
    a time (**Bar 1, Bar 2…**) and follows the playhead while playing.
    <kbd>Space</kbd> plays and stops. **Original** puts each chop where it sat
@@ -54,7 +54,7 @@ again. After that a double-click works.
      with the number of bars set by **Bars**. On the MPC, load the program onto a
      track, then import the pattern into that track. Chop 1 plays note 36
      (pad A01), chop 2 note 37, and so on, with swing baked in.
-   - **Pattern .wav**: the sequence rendered at the current BPM for 1–8 bars,
+   - **Pattern .wav**: the sequence rendered at the current BPM for 1, 2 or 4 bars,
      cut to exact loop length.
    - **Export chop .wav**: just the selected chop.
    - 16-bit or 24-bit.

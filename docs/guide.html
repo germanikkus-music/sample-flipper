@@ -120,7 +120,7 @@
       <p>Per chop: reverse, pitch, gain, fade in/out, choke. Changes are heard right away.</p>
       <div class="where">Flip panel</div></div>
     <div class="step" style="--c: var(--seq)"><h3><span class="n">6</span>Sequence</h3>
-      <p>Click steps to rearrange chops into a new beat, 1 to 8 bars long. Add swing. Press Space to play.</p>
+      <p>Click steps to rearrange chops into a new beat, 1 to 4 bars long. Add swing. Press Space to play.</p>
       <div class="where">Step grid</div></div>
     <div class="step" style="--c: var(--export)"><h3><span class="n">7</span>Export</h3>
       <p>Chops as WAVs + MPC drum program + MPC pattern, or the beat as one WAV.</p>
@@ -224,7 +224,7 @@
   const bottomHalf = { y0: 1004, y1: 1766, el: 'crop2', legend: 'legend2', items: [
     { n: 13, c: 'seq', x: 27, y: 1039, w: 70, h: 38, t: 'Play / Stop', d: 'Loops the pattern (Space does the same). Pads light up and the grid follows the playhead.' },
     { n: 14, c: 'tempo', x: 98, y: 1039, w: 320, h: 38, t: 'BPM · Detect · ½ · ×2 · Tap', d: 'Type a tempo, detect it from the audio, halve or double it, or tap it in.' },
-    { n: 15, c: 'seq', x: 430, y: 1039, w: 129, h: 38, t: 'Length', d: 'Pattern length: 1, 2, 4 or 8 bars. Set to the loop’s own length when you load it. Making it longer repeats what’s there.' },
+    { n: 15, c: 'seq', x: 430, y: 1039, w: 129, h: 38, t: 'Length', d: 'Pattern length: 1, 2 or 4 bars. Set to the loop’s own length when you load it. Making it longer repeats what’s there.' },
     { n: 16, c: 'seq', x: 561, y: 1039, w: 188, h: 38, t: 'Swing', d: 'Pushes every second 16th later for a shuffled feel. Applies to playback and exports.' },
     { n: 17, c: 'seq', x: 759, y: 1039, w: 205, h: 38, t: 'Original · Flip it · Clear', d: 'Original puts every chop where it sat in the loop, across all bars. Flip it makes a random new arrangement.' },
     { n: 18, c: 'seq', x: 27, y: 1084, w: 220, h: 32, t: 'Bar 1 · Bar 2 · …', d: 'Pick which bar the grid shows. A dot means that bar has hits.' },

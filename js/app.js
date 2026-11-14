@@ -4,7 +4,7 @@
 
   const $ = function (id) { return document.getElementById(id); };
   const STEPS = 16; // per bar
-  const LENGTHS = [1, 2, 4, 8];
+  const LENGTHS = [1, 2, 4]; // bars; 4 is the longest loop worth chopping
   const MAX_CHOPS = 64;
   // MPC layout: pad 1 bottom-left, pad 16 top-right. Keys mirror that shape.
   const PAD_KEYS = ['z', 'x', 'c', 'v', 'a', 's', 'd', 'f', 'q', 'w', 'e', 'r', '1', '2', '3', '4'];
@@ -599,7 +599,7 @@
       } else {
         setBpm(SF.detectBPM(buffer));
       }
-      // Pattern length = the loop's length in bars (up to 8), so the whole
+      // Pattern length = the loop's length in bars (up to 4), so the whole
       // loop fits in the sequencer.
       const loopBars = buffer.duration / (240 / S.bpm);
       S.bars = LENGTHS.filter(function (b) { return b <= loopBars + 0.25; }).pop() || 1;
