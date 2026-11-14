@@ -47,6 +47,10 @@ again. After that a double-click works.
      program (`.xpm`) in the same folder. Unzip, copy the folder to your MPC
      (SD card, USB or the internal drive), and load the `.xpm`. Chop 1 is on
      pad A01; choked chops share mute group 1.
+   - The zip also holds the sequence as an MPC pattern (`.mpcpattern`),
+     with the number of bars set by **Bars**. On the MPC, load the program onto a
+     track, then import the pattern into that track. Chop 1 plays note 36
+     (pad A01), chop 2 note 37, and so on, with swing baked in.
    - **Pattern .wav**: the sequence rendered at the current BPM for 1–8 bars,
      cut to exact loop length.
    - **Export chop .wav**: just the selected chop.
@@ -75,6 +79,10 @@ again. After that a double-click works.
   XML format MPC OS 2.x and 3.x both load). It has been checked against those
   kits but not yet loaded on an MPC, so try it once on the Live III before
   relying on it.
+- The `.mpcpattern` uses the older JSON layout found in Akai's drum-kit
+  patterns and in the NeoSoul expansion (960 ticks per beat). MPC OS 3.x saves
+  a newer layout but ships expansions in the older one. It also hasn't been
+  imported on the MPC yet.
 - Pitch is baked into exported chops by resampling, so a pitched-up chop is
   shorter and a pitched-down chop longer, same as the MPC's tune.
 - BPM detection is tuned for loops. For a one-shot or a long song, check the

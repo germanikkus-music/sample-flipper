@@ -187,6 +187,37 @@
     return esc(json);
   }
 
+  // MIDI note the drum program maps to a pad (0 = pad A01 = note 36).
+  SF.padNote = function (padIndex) {
+    return (padIndex + 36) % 128;
+  };
+
+  // MPC pattern (.mpcpattern), the legacy JSON layout used by Akai's drum-kit
+  // patterns and the NeoSoul expansion: 960 ticks per quarter note, type 2 =
+  // note event with "1" = note, "2" = velocity 0..1, "len" in ticks.
+  // notes: [{ tick, pad, velocity (0..1), len }]
+  SF.buildMpcPattern = function (notes) {
+    // Written by hand rather than JSON.stringify so the key order matches
+    // Akai's files ("length" is also bigger than a JS number can hold).
+    const sorted = notes.slice().sort(function (a, b) { return a.tick - b.tick || a.pad - b.pad; });
+    const lines = sorted.map(function (n) {
+      return '            {\n' +
+        '                "type": 2,\n' +
+        '                "time": ' + Math.round(n.tick) + ',\n' +
+        '                "len": ' + Math.round(n.len) + ',\n' +
+        '                "1": ' + SF.padNote(n.pad) + ',\n' +
+        '                "2": ' + n.velocity.toFixed(6) + ',\n' +
+        '                "3": 0,\n' +
+        '                "mod": 0,\n' +
+        '                "modVal": 0.5,\n' +
+        '                "prob": 100,\n' +
+        '                "ratchet": 1\n' +
+        '            }';
+    });
+    return '{\n    "pattern": {\n        "length": 9223372036854775807,\n        "events": [\n' +
+      lines.join(',\n') + '\n        ]\n    }\n}\n';
+  };
+
   // pads: up to 128 of { sampleName, frames, choke, color (0xRRGGBB) } in pad
   // order (index 0 = pad A01).
   SF.buildXpm = function (programName, pads) {

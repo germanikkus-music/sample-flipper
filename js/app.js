@@ -592,12 +592,35 @@
       files.push({ name: name + '/' + sample + '.wav', data: SF.encodeWav(b, bitDepth()) });
       pads.push({ sampleName: sample, frames: b.length, choke: S.flips[i].choke, color: chopColorInt(i) });
     }
+    const extras = [];
     if ($('withXpm').checked) {
       files.push({ name: name + '/' + name + '.xpm', data: new TextEncoder().encode(SF.buildXpm(name, pads)) });
+      extras.push(name + '.xpm');
+    }
+    const notes = patternNotes(parseInt($('bars').value, 10));
+    if ($('withPattern').checked && notes.length) {
+      const pname = name + ' ' + String(S.bpm).replace('.', '_') + 'bpm.mpcpattern';
+      files.push({ name: name + '/' + pname, data: new TextEncoder().encode(SF.buildMpcPattern(notes)) });
+      extras.push(pname);
     }
     SF.download(SF.makeZip(files), name + '_chops.zip');
-    status('Exported ' + n + ' chops' + ($('withXpm').checked ? ' + ' + name + '.xpm' : '') + '.', 'ok');
+    status('Exported ' + n + ' chops' + (extras.length ? ' + ' + extras.join(' + ') : '') + '.', 'ok');
   }
+
+  // The sequence as MPC notes: 960 ticks per quarter, 240 per 16th step.
+  function patternNotes(bars) {
+    const notes = [];
+    for (let bar = 0; bar < bars; bar++) {
+      for (let s = 0; s < STEPS; s++) {
+        const tick = (bar * STEPS + s) * 240 + (s % 2 ? S.swing * 120 : 0);
+        for (let i = 0; i < Math.min(chopCount(), 128); i++) {
+          if (S.pattern[i] && S.pattern[i][s]) notes.push({ tick: tick, pad: i, velocity: 1, len: 240 });
+        }
+      }
+    }
+    return notes;
+  }
+  SF.patternNotes = patternNotes;
 
   async function exportOneChop() {
     const i = S.selected;
