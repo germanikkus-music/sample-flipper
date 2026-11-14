@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0a0c11">
+  <title>Sample Flipper</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="top">
+    <div class="brand">
+      <span class="logo">SAMPLE<b>FLIPPER</b></span>
+      <span class="maker">Germanikkus</span>
+    </div>
+    <div class="file-actions">
+      <label class="btn primary" for="file">Load sample</label>
+      <input id="file" type="file" accept="audio/*,video/mp4,.wav,.mp3,.m4a,.mp4,.aif,.aiff,.flac,.ogg" hidden>
+      <span id="fileName" class="file-name">Drop a WAV, MP3, M4A or MP4 anywhere</span>
+    </div>
+  </header>
+
+  <div id="status" class="status" role="status" aria-live="polite"></div>
+
+  <section class="panel wave-panel">
+    <div class="toolbar">
+      <div class="group">
+        <button id="playSample" class="btn" disabled title="Play whole sample (P)">▶ Sample</button>
+        <button id="tapMark" class="btn" disabled title="Drop a marker at the playhead while the sample plays (M)">Tap chop</button>
+        <button id="markMode" class="btn toggle" disabled aria-pressed="false" title="When on, clicking the waveform adds a marker">+ Marker</button>
+        <button id="delMarker" class="btn" disabled title="Delete the selected marker (Delete). Right-click a marker also deletes it.">Delete marker</button>
+      </div>
+      <div class="group">
+        <select id="chopMode" disabled aria-label="Chop mode">
+          <option value="transient">Transients</option>
+          <option value="equal">Equal slices</option>
+        </select>
+        <label class="slider" id="sensWrap">Sensitivity
+          <input id="sensitivity" type="range" min="0" max="100" value="50" disabled>
+        </label>
+        <select id="slices" disabled hidden aria-label="Number of slices">
+          <option>4</option><option selected>8</option><option>16</option><option>32</option>
+        </select>
+        <button id="chopBtn" class="btn accent" disabled>Chop</button>
+        <button id="clearMarkers" class="btn ghost" disabled>Clear</button>
+      </div>
+      <div class="group">
+        <button id="zoomOut" class="btn icon" disabled aria-label="Zoom out">−</button>
+        <button id="zoomIn" class="btn icon" disabled aria-label="Zoom in">+</button>
+        <button id="zoomFit" class="btn" disabled>Fit</button>
+      </div>
+    </div>
+    <div class="wave-wrap" id="waveWrap">
+      <canvas id="wave"></canvas>
+      <div class="wave-empty" id="waveEmpty">
+        <p><b>Drop a sample here</b> or tap <i>Load sample</i>.</p>
+        <p class="dim">Drag markers to adjust · scroll or pinch to zoom · drag to pan · right-click a marker to delete it</p>
+      </div>
+    </div>
+    <canvas id="overview" class="overview"></canvas>
+    <div class="info" id="info"></div>
+  </section>
+
+  <div class="mid">
+    <section class="panel pads-panel">
+      <div class="panel-head">
+        <h2>Pads</h2>
+        <div class="banks" id="banks"></div>
+      </div>
+      <div class="pads" id="pads"></div>
+      <p class="hint">Keys: <kbd>1-4</kbd> <kbd>Q-R</kbd> <kbd>A-F</kbd> <kbd>Z-V</kbd> play pads (laid out like the MPC). <kbd>Space</kbd> play/stop pattern.</p>
+    </section>
+
+    <section class="panel edit-panel">
+      <div class="panel-head">
+        <h2>Flip <span id="editTitle" class="dim">no chop</span></h2>
+        <button id="auditionBtn" class="btn" disabled>▶</button>
+      </div>
+      <div class="edit" id="edit">
+        <label class="check"><input type="checkbox" id="fReverse"> Reverse</label>
+        <label class="check"><input type="checkbox" id="fChoke"> Choke <span class="dim">(cuts other choked chops)</span></label>
+        <label class="row">Pitch <output id="oPitch">0 st</output>
+          <input type="range" id="fPitch" min="-24" max="24" step="1" value="0"></label>
+        <label class="row">Gain <output id="oGain">0 dB</output>
+          <input type="range" id="fGain" min="-24" max="12" step="0.5" value="0"></label>
+        <label class="row">Fade in <output id="oFadeIn">0 ms</output>
+          <input type="range" id="fFadeIn" min="0" max="500" step="1" value="0"></label>
+        <label class="row">Fade out <output id="oFadeOut">5 ms</output>
+          <input type="range" id="fFadeOut" min="0" max="1000" step="1" value="5"></label>
+        <div class="edit-actions">
+          <button id="resetFlip" class="btn ghost">Reset</button>
+          <button id="applyAll" class="btn ghost" title="Copy these flips to every chop">Apply to all</button>
+          <button id="exportChop" class="btn">Export chop .wav</button>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <section class="panel seq-panel">
+    <div class="toolbar">
+      <div class="group">
+        <button id="seqPlay" class="btn primary" disabled>▶ Play</button>
+        <label class="num">BPM <input id="bpm" type="number" min="40" max="240" step="0.1" value="90"></label>
+        <button id="bpmDetect" class="btn" disabled title="Detect tempo from the loaded loop">Detect</button>
+        <button id="bpmHalf" class="btn icon" title="Half tempo">½</button>
+        <button id="bpmDouble" class="btn icon" title="Double tempo">×2</button>
+        <button id="tapTempo" class="btn">Tap</button>
+      </div>
+      <div class="group">
+        <label class="slider">Swing <input id="swing" type="range" min="0" max="75" value="0"><output id="oSwing">0%</output></label>
+      </div>
+      <div class="group">
+        <button id="patOriginal" class="btn ghost" disabled title="Place each chop where it falls in the original loop">Original</button>
+        <button id="patFlip" class="btn accent" disabled title="Random rearrangement">Flip it</button>
+        <button id="patClear" class="btn ghost" disabled>Clear</button>
+      </div>
+    </div>
+    <div class="seq-scroll">
+      <div class="seq" id="seq"></div>
+    </div>
+  </section>
+
+  <section class="panel export-panel">
+    <h2>Export</h2>
+    <div class="toolbar">
+      <div class="group">
+        <label class="num">Bit depth
+          <select id="bitDepth"><option value="16">16-bit</option><option value="24" selected>24-bit</option></select>
+        </label>
+        <label class="check"><input type="checkbox" id="withXpm" checked> Include MPC drum program (.xpm)</label>
+        <button id="exportChops" class="btn primary" disabled>Chops .zip</button>
+      </div>
+      <div class="group">
+        <label class="num">Bars
+          <select id="bars"><option>1</option><option>2</option><option selected>4</option><option>8</option></select>
+        </label>
+        <button id="exportPattern" class="btn primary" disabled>Pattern .wav</button>
+      </div>
+    </div>
+    <p class="hint">Chops export with their flips baked in. Unzip, copy the folder to your MPC, and load the <code>.xpm</code>: chop 1 is pad A01. The pattern renders the 16 steps at the current BPM for the chosen number of bars, ready to loop.</p>
+  </section>
+
+  <div id="dropOverlay" class="drop-overlay">Drop to load</div>
+
+  <script src="js/zip.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/analysis.js"></script>
+  <script src="js/waveform.js"></script>
+  <script src="js/xpm.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
