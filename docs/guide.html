@@ -221,17 +221,16 @@
     { n: 11, c: 'flip', x: 623, y: 466, w: 541, h: 400, t: 'Flip panel', d: 'Edits the selected chop: Reverse, Choke (chops cut each other off), Pitch ±24 semitones, Gain, Fades. ▶ auditions it.' },
     { n: 12, c: 'flip', x: 634, y: 805, w: 300, h: 40, t: 'Reset · Apply to all · Export chop', d: 'Undo this chop’s flips, copy them to every chop, or save just this chop as a WAV.' },
   ]};
-  const bottomHalf = { y0: 1004, y1: 1766, el: 'crop2', legend: 'legend2', items: [
-    { n: 13, c: 'seq', x: 27, y: 1039, w: 70, h: 38, t: 'Play / Stop', d: 'Loops the pattern (Space does the same). Pads light up and the grid follows the playhead.' },
+  const bottomHalf = { y0: 1004, y1: 1553, el: 'crop2', legend: 'legend2', items: [
+    { n: 13, c: 'seq', x: 27, y: 1039, w: 70, h: 38, t: 'Play / Stop', d: 'Loops the pattern (Space does the same). Pads light up and a white outline runs along the grid.' },
     { n: 14, c: 'tempo', x: 98, y: 1039, w: 320, h: 38, t: 'BPM · Detect · ½ · ×2 · Tap', d: 'Type a tempo, detect it from the audio, halve or double it, or tap it in.' },
-    { n: 15, c: 'seq', x: 430, y: 1039, w: 129, h: 38, t: 'Length', d: 'Pattern length: 1, 2 or 4 bars. Set to the loop’s own length when you load it. Making it longer repeats what’s there.' },
+    { n: 15, c: 'seq', x: 430, y: 1039, w: 129, h: 38, t: 'Length', d: '4 bars by default; 2 or 1 bar gives bigger cells. Making it longer repeats what’s there.' },
     { n: 16, c: 'seq', x: 561, y: 1039, w: 188, h: 38, t: 'Swing', d: 'Pushes every second 16th later for a shuffled feel. Applies to playback and exports.' },
-    { n: 17, c: 'seq', x: 759, y: 1039, w: 205, h: 38, t: 'Original · Flip it · Clear', d: 'Original puts every chop where it sat in the loop, across all bars. Flip it makes a random new arrangement.' },
-    { n: 18, c: 'seq', x: 27, y: 1084, w: 220, h: 32, t: 'Bar 1 · Bar 2 · …', d: 'Pick which bar the grid shows. A dot means that bar has hits.' },
-    { n: 19, c: 'seq', x: 29, y: 1120, w: 1122, h: 480, t: 'Step grid', d: 'One bar at a time: rows = pads, columns = 16th steps (1–4 are the beats). Click a cell to place that chop there.' },
-    { n: 20, c: 'export', x: 27, y: 1662, w: 614, h: 38, t: 'Export options', d: 'Bit depth, and whether the zip includes the MPC drum program (.xpm) and the sequence (.mpcpattern).' },
-    { n: 21, c: 'export', x: 643, y: 1662, w: 94, h: 38, t: 'Chops .zip', d: 'Every chop as a WAV with flips baked in, plus the .xpm and .mpcpattern, in one folder.' },
-    { n: 22, c: 'export', x: 750, y: 1662, w: 190, h: 38, t: 'Bars · Pattern .wav', d: 'Renders the beat to one WAV, exactly that many bars, ready to loop (the pattern repeats if Bars is longer). Bars also sets the .mpcpattern length.' },
+    { n: 17, c: 'seq', x: 759, y: 1039, w: 205, h: 38, t: 'Original · Flip it · Clear', d: 'Original puts every chop where it sat in the loop (shorter loops repeat to fill). Flip it makes a random new arrangement.' },
+    { n: 18, c: 'seq', x: 29, y: 1084, w: 1122, h: 305, t: 'Step grid', d: 'All bars in one chart, violet lines between bars. Rows = pads, columns = 16th steps. Click a cell to place that chop there.' },
+    { n: 19, c: 'export', x: 27, y: 1449, w: 614, h: 38, t: 'Export options', d: 'Bit depth, and whether the zip includes the MPC drum program (.xpm) and the sequence (.mpcpattern).' },
+    { n: 20, c: 'export', x: 643, y: 1449, w: 94, h: 38, t: 'Chops .zip', d: 'Every chop as a WAV with flips baked in, plus the .xpm and .mpcpattern, in one folder.' },
+    { n: 21, c: 'export', x: 750, y: 1449, w: 190, h: 38, t: 'Bars · Pattern .wav', d: 'Renders the beat to one WAV, exactly that many bars, ready to loop (the pattern repeats if Bars is longer). Bars also sets the .mpcpattern length.' },
   ]};
 
   function build(spec) {

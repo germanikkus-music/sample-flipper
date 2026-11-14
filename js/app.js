@@ -4,7 +4,6 @@
 
   const $ = function (id) { return document.getElementById(id); };
   const STEPS = 16; // per bar
-  const LENGTHS = [1, 2, 4]; // bars; 4 is the longest loop worth chopping
   const MAX_CHOPS = 64;
   // MPC layout: pad 1 bottom-left, pad 16 top-right. Keys mirror that shape.
   const PAD_KEYS = ['z', 'x', 'c', 'v', 'a', 's', 'd', 'f', 'q', 'w', 'e', 'r', '1', '2', '3', '4'];
@@ -17,8 +16,7 @@
     flips: [],      // per chop index
     cache: [],      // processed AudioBuffers per chop index
     pattern: [],    // pattern[chop] = Array(16 * bars) of booleans
-    bars: 1,        // pattern length
-    page: 0,        // bar shown in the step grid
+    bars: 4,        // pattern length (4 bars by default)
     selected: -1,
     bank: 0,
     bpm: 90,
@@ -363,14 +361,17 @@
       el.innerHTML = '<div class="seq-empty">Load and chop a sample to build a pattern.</div>';
       return;
     }
-    renderBarPages();
-    // The grid shows one bar (16 steps) at a time; data-step is the step's
-    // position in the whole pattern.
-    const offset = S.page * STEPS;
+    // Every bar in one chart: column template set from the pattern length.
+    const total = totalSteps();
+    const cols = '44px repeat(' + total + ', minmax(0, 1fr))';
+    el.dataset.bars = S.bars; // fewer bars = bigger cells (see style.css)
+    el.style.minWidth = (44 + total * 11) + 'px';
     const head = document.createElement('div');
     head.className = 'seq-steps';
-    head.innerHTML = '<span>Bar ' + (S.page + 1) + '</span>' + Array.from({ length: STEPS }, function (_, s) {
-      return '<span data-step="' + (offset + s) + '">' + (s % 4 === 0 ? (s / 4 + 1) : '·') + '</span>';
+    head.style.gridTemplateColumns = cols;
+    head.innerHTML = '<span></span>' + Array.from({ length: total }, function (_, s) {
+      const label = s % STEPS === 0 ? 'Bar ' + (s / STEPS + 1) : (s % 4 === 0 ? String((s % STEPS) / 4 + 1) : '');
+      return '<span data-step="' + s + '"' + (s % STEPS === 0 ? ' class="bar"' : '') + '>' + label + '</span>';
     }).join('');
     el.appendChild(head);
     const first = S.bank * 16;
@@ -378,18 +379,19 @@
     for (let i = first; i < last; i++) {
       const row = document.createElement('div');
       row.className = 'seq-row';
+      row.style.gridTemplateColumns = cols;
       row.style.setProperty('--c', chopColor(i));
       const label = document.createElement('div');
       label.className = 'seq-label';
       label.textContent = padName(i);
       label.addEventListener('click', function () { selectChop(i, true); });
       row.appendChild(label);
-      for (let k = 0; k < STEPS; k++) {
-        const s = offset + k;
+      for (let s = 0; s < total; s++) {
+        const k = s % STEPS;
         const cell = document.createElement('button');
-        cell.className = 'cell' + (k % 4 === 0 ? ' beat' : '') + (S.pattern[i][s] ? ' on' : '');
+        cell.className = 'cell' + (k % 4 === 0 ? ' beat' : '') + (k === 0 && s ? ' bar' : '') + (S.pattern[i][s] ? ' on' : '');
         cell.dataset.step = s;
-        cell.setAttribute('aria-label', padName(i) + ' bar ' + (S.page + 1) + ' step ' + (k + 1));
+        cell.setAttribute('aria-label', padName(i) + ' bar ' + (Math.floor(s / STEPS) + 1) + ' step ' + (k + 1));
         cell.addEventListener('click', function () {
           S.pattern[i][s] = !S.pattern[i][s];
           cell.classList.toggle('on', S.pattern[i][s]);
@@ -398,21 +400,6 @@
         row.appendChild(cell);
       }
       el.appendChild(row);
-    }
-  }
-
-  // Bar buttons above the grid; a dot marks bars that have hits.
-  function renderBarPages() {
-    const el = $('barPages');
-    el.innerHTML = '';
-    if (S.bars < 2) return;
-    for (let b = 0; b < S.bars; b++) {
-      const btn = document.createElement('button');
-      const used = S.pattern.some(function (row) { return row.slice(b * STEPS, (b + 1) * STEPS).some(Boolean); });
-      btn.className = 'btn' + (b === S.page ? ' on' : '') + (used ? ' used' : '');
-      btn.textContent = 'Bar ' + (b + 1);
-      btn.addEventListener('click', function () { S.page = b; renderSeq(); });
-      el.appendChild(btn);
     }
   }
 
@@ -426,7 +413,6 @@
       for (let s = 0; s < total; s++) out[s] = !!row[s % old];
       return out;
     });
-    if (S.page >= S.bars) S.page = 0;
     $('seqLen').value = String(n);
     $('bars').value = String(n);
     if (seq.playing && seq.step >= total) seq.step = 0;
@@ -443,12 +429,17 @@
     const total = totalSteps();
     S.pattern = [];
     for (let i = 0; i < n; i++) S.pattern.push(new Array(total).fill(false));
+    // A loop shorter than the pattern repeats to fill it (a 1-bar loop
+    // plays 4 times in the default 4 bars).
+    const loopSteps = Math.max(1, Math.round(S.buffer.duration / stepDur / STEPS) * STEPS);
     const used = new Set();
     for (let i = 0; i < n; i++) {
-      const st = Math.round(S.markers[i] / S.buffer.sampleRate / stepDur);
-      if (st < total && !used.has(st)) { S.pattern[i][st] = true; used.add(st); }
+      const st0 = Math.round(S.markers[i] / S.buffer.sampleRate / stepDur);
+      for (let st = st0; st < total; st += loopSteps) {
+        if (!used.has(st)) { S.pattern[i][st] = true; used.add(st); }
+        if (loopSteps >= total) break;
+      }
     }
-    S.page = 0;
     renderSeq();
   }
 
@@ -536,12 +527,7 @@
     const now = SF.getContext().currentTime;
     let cur = null;
     while (seq.queue.length && seq.queue[0].time <= now) cur = seq.queue.shift();
-    if (cur) {
-      // The grid follows the playhead from bar to bar.
-      const bar = Math.floor(cur.step / STEPS);
-      if (bar !== S.page) { S.page = bar; renderSeq(); }
-      markStep(cur.step);
-    }
+    if (cur) markStep(cur.step);
     requestAnimationFrame(seqDraw);
   }
 
@@ -599,11 +585,8 @@
       } else {
         setBpm(SF.detectBPM(buffer));
       }
-      // Pattern length = the loop's length in bars (up to 4), so the whole
-      // loop fits in the sequencer.
-      const loopBars = buffer.duration / (240 / S.bpm);
-      S.bars = LENGTHS.filter(function (b) { return b <= loopBars + 0.25; }).pop() || 1;
-      S.page = 0;
+      // Every load starts on the default 4 bars; Length can shrink it.
+      S.bars = 4;
       $('seqLen').value = String(S.bars);
       $('bars').value = String(S.bars);
       // Drums chop well on transients. Sustained material (chords, pads)

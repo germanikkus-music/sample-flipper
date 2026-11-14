@@ -65,7 +65,7 @@ kbd {
   flex-wrap: wrap;
   margin-bottom: 10px;
 }
-.brand { display: flex; align-items: baseline; gap: 10px; }
+.brand { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; min-width: 0; }
 .logo {
   font-weight: 300;
   letter-spacing: 0.22em;
@@ -255,48 +255,45 @@ output { font-variant-numeric: tabular-nums; color: var(--text); font-size: 12px
 .edit-actions { display: flex; flex-wrap: wrap; gap: 6px; }
 .edit.disabled { opacity: 0.4; pointer-events: none; }
 
-/* Sequencer */
-.bar-pages { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; }
-.bar-pages:empty { display: none; }
-.bar-pages .btn { min-height: 28px; padding: 3px 10px; font-size: 12px; position: relative; }
-.bar-pages .btn.used::after {
-  content: "";
-  position: absolute;
-  top: 4px;
-  right: 4px;
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: var(--cyan);
-}
-.seq-steps span:first-child { text-align: left; color: var(--violet); white-space: nowrap; }
+/* Sequencer: every bar in one chart, small cells */
 .seq-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-.seq { display: grid; gap: 3px; min-width: 560px; }
-.seq-row { display: grid; grid-template-columns: 54px repeat(16, 1fr); gap: 3px; align-items: center; }
+.seq { display: grid; gap: 2px; }
+.seq-row { display: grid; gap: 2px; align-items: center; }
 .seq-label {
-  font-size: 11px;
+  font-size: 10px;
   font-family: ui-monospace, Menlo, monospace;
   color: var(--text);
-  padding: 0 4px;
+  padding: 0 3px;
   border-left: 3px solid var(--c);
   cursor: pointer;
   white-space: nowrap;
-  height: 26px;
+  height: 16px;
   display: flex;
   align-items: center;
 }
 .cell {
-  height: 26px;
-  border-radius: 4px;
+  height: 16px;
+  min-width: 0;
+  border-radius: 3px;
   border: 1px solid var(--line);
   background: #0e1118;
   cursor: pointer;
   padding: 0;
 }
-.cell.beat { background: #141824; }
-.cell.on { background: var(--c); border-color: var(--c); box-shadow: 0 0 8px color-mix(in srgb, var(--c) 60%, transparent); }
-.cell.now { outline: 1px solid rgba(255, 255, 255, 0.7); outline-offset: -1px; }
-.seq-steps { display: grid; grid-template-columns: 54px repeat(16, 1fr); gap: 3px; font-size: 10px; color: var(--dim); text-align: center; }
+.cell.beat { background: #151a26; }
+/* A violet line between bars. */
+.cell.bar { box-shadow: -2px 0 0 0 rgba(163, 91, 255, 0.55); }
+.cell.on { background: var(--c); border-color: var(--c); }
+.cell.bar.on { box-shadow: -2px 0 0 0 rgba(163, 91, 255, 0.55), 0 0 6px color-mix(in srgb, var(--c) 60%, transparent); }
+.cell.on:not(.bar) { box-shadow: 0 0 6px color-mix(in srgb, var(--c) 60%, transparent); }
+.cell.now { outline: 1px solid rgba(255, 255, 255, 0.75); outline-offset: -1px; }
+/* Fewer bars on screen: taller cells to match the wider ones. */
+.seq[data-bars="2"] .cell, .seq[data-bars="2"] .seq-label { height: 24px; }
+.seq[data-bars="1"] .cell, .seq[data-bars="1"] .seq-label { height: 30px; }
+.seq[data-bars="1"] .seq-label, .seq[data-bars="2"] .seq-label { font-size: 11px; }
+.seq-steps { display: grid; gap: 2px; font-size: 9px; color: var(--dim); height: 13px; }
+.seq-steps span { white-space: nowrap; overflow: visible; }
+.seq-steps span.bar { color: var(--violet); font-weight: 600; }
 .seq-steps span.now { color: var(--cyan); }
 .seq-empty { color: var(--dim); font-size: 13px; padding: 12px 0; }
 

@@ -39,12 +39,11 @@ again. After that a double-click works.
 5. **Flip** the selected chop: reverse, pitch (±24 semitones, changes speed
    like an MPC tune), gain, fade in/out, and choke (choked chops cut each other
    off). **Apply to all** copies the settings to every chop.
-6. **Sequencer**: 1, 2 or 4 bars (**Length**), set to the loop's own
-   length when you load it, so the whole loop fits. The grid shows one bar at
-   a time (**Bar 1, Bar 2…**) and follows the playhead while playing.
-   <kbd>Space</kbd> plays and stops. **Original** puts each chop where it sat
-   in the loop, **Flip it** makes a random rearrangement, **Swing** shuffles
-   the 16ths.
+6. **Sequencer**: all bars in one chart, 4 bars by default. **Length**
+   switches to 2 or 1 bar, which makes the cells bigger. <kbd>Space</kbd>
+   plays and stops. **Original** puts each chop where it sat in the loop
+   (shorter loops repeat to fill the bars), **Flip it** makes a random
+   rearrangement, **Swing** shuffles the 16ths.
 7. **Export**:
    - **Chops .zip**: one WAV per chop with flips baked in, plus an MPC drum
      program (`.xpm`) in the same folder. Unzip, copy the folder to your MPC
