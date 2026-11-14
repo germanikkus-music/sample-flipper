@@ -35,6 +35,11 @@
       const mi = self.markerAt(self.localX(e));
       if (mi >= 0) { e.preventDefault(); self.cb.onDeleteMarker(mi); }
     });
+    // Double-click adds a marker in any mode.
+    canvas.addEventListener('dblclick', function (e) {
+      if (!self.buffer || self.markerAt(self.localX(e)) >= 0) return;
+      self.cb.onAddMarker(Math.round(self.xToSample(self.localX(e))));
+    });
     const ovSeek = function (e) {
       if (!self.buffer || (e.type === 'pointermove' && !e.buttons)) return;
       const r = self.ov.getBoundingClientRect();

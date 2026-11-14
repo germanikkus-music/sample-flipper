@@ -37,7 +37,9 @@ again. After that a double-click works.
      loops are sliced one chop per bar automatically).
    - **Tap chop** (or <kbd>M</kbd>): plays the sample; tap on each hit to drop
      a marker.
-   - **+ Marker**: when on, clicking the waveform adds a marker.
+   - **+ Marker**: when on, clicking the waveform adds a chop there.
+     **Double-click** the waveform adds one in any mode. (+ Marker and
+     Select take turns: turning one on turns the other off.)
    - **Clear chops** removes every marker, so the whole sample is one chop
      on A01. Press **Chop** to chop again.
    - Drag markers to adjust. Right-click a marker, or select it and press

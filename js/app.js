@@ -807,10 +807,24 @@
     if (!samplePlay) { playSample(); status('Playing. Tap "Tap chop" (or press M) on each hit.'); return; }
     addMarker(samplePos());
   });
-  $('markMode').addEventListener('click', function () {
-    wf.markMode = !wf.markMode;
-    $('markMode').setAttribute('aria-pressed', String(wf.markMode));
-  });
+  // + Marker and Select both use clicks on the waveform, so only one is on at a time.
+  function setMarkMode(on) {
+    wf.markMode = on;
+    $('markMode').setAttribute('aria-pressed', String(on));
+    if (on) {
+      setSelectMode(false);
+      status('Click the waveform to add a chop there. Drag a marker to move it; right-click it to delete. Double-click also adds a chop in any mode.');
+    }
+  }
+  function setSelectMode(on) {
+    wf.selectMode = on;
+    $('selMode').setAttribute('aria-pressed', String(on));
+    if (on) {
+      setMarkMode(false);
+      status('Drag across the waveform to select. Drag the yellow edges to adjust. ▶ Sample plays the selection.');
+    }
+  }
+  $('markMode').addEventListener('click', function () { setMarkMode(!wf.markMode); });
   $('delMarker').addEventListener('click', function () {
     if (wf.selectedMarker >= 0) deleteMarker(wf.selectedMarker);
   });
@@ -827,13 +841,9 @@
     S.selected = -1;
     setMarkers([0], false);
     selectChop(0, false);
-    status('Chops cleared: the whole sample is on A01. Press Chop to chop again, or add markers.');
+    status('Chops cleared: the whole sample is on A01. Press Chop to chop again, or turn on + Marker (or double-click the waveform) to add chops by hand.');
   });
-  $('selMode').addEventListener('click', function () {
-    wf.selectMode = !wf.selectMode;
-    $('selMode').setAttribute('aria-pressed', String(wf.selectMode));
-    if (wf.selectMode) status('Drag across the waveform to select. Drag the yellow edges to adjust. ▶ Sample plays the selection.');
-  });
+  $('selMode').addEventListener('click', function () { setSelectMode(!wf.selectMode); });
   $('keepSel').addEventListener('click', function () { editBuffer('keep'); });
   $('cutSel').addEventListener('click', function () { editBuffer('cut'); });
   $('undoEdit').addEventListener('click', undoEdit);
