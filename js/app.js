@@ -3,7 +3,8 @@
   'use strict';
 
   const $ = function (id) { return document.getElementById(id); };
-  const STEPS = 16;
+  const STEPS = 16; // per bar
+  const LENGTHS = [1, 2, 4, 8];
   const MAX_CHOPS = 64;
   // MPC layout: pad 1 bottom-left, pad 16 top-right. Keys mirror that shape.
   const PAD_KEYS = ['z', 'x', 'c', 'v', 'a', 's', 'd', 'f', 'q', 'w', 'e', 'r', '1', '2', '3', '4'];
@@ -15,7 +16,9 @@
     markers: [],
     flips: [],      // per chop index
     cache: [],      // processed AudioBuffers per chop index
-    pattern: [],    // pattern[chop] = Array(16) of booleans
+    pattern: [],    // pattern[chop] = Array(16 * bars) of booleans
+    bars: 1,        // pattern length
+    page: 0,        // bar shown in the step grid
     selected: -1,
     bank: 0,
     bpm: 90,
@@ -48,6 +51,8 @@
   }
 
   function chopCount() { return S.markers.length; }
+
+  function totalSteps() { return STEPS * S.bars; }
 
   function chopRange(i) {
     return [S.markers[i], i + 1 < S.markers.length ? S.markers[i + 1] : S.buffer.length];
@@ -175,7 +180,7 @@
     S.flips.length = Math.min(S.flips.length, n);
     for (let i = 0; i < n; i++) if (!S.flips[i]) S.flips[i] = Object.assign({}, DEFAULT_FLIP);
     S.pattern.length = Math.min(S.pattern.length, n);
-    for (let i = 0; i < n; i++) if (!S.pattern[i]) S.pattern[i] = new Array(STEPS).fill(false);
+    for (let i = 0; i < n; i++) if (!S.pattern[i]) S.pattern[i] = new Array(totalSteps()).fill(false);
     S.cache = [];
     if (S.selected >= n) S.selected = n - 1;
     if (S.bank * 16 >= Math.max(16, n)) S.bank = 0;
@@ -195,7 +200,7 @@
     S.markers.splice(idx, 0, p);
     const base = idx > 0 ? S.flips[idx - 1] : DEFAULT_FLIP;
     S.flips.splice(idx, 0, Object.assign({}, base));
-    S.pattern.splice(idx, 0, new Array(STEPS).fill(false));
+    S.pattern.splice(idx, 0, new Array(totalSteps()).fill(false));
     S.selected = idx;
     syncChops(true);
   }
@@ -358,10 +363,14 @@
       el.innerHTML = '<div class="seq-empty">Load and chop a sample to build a pattern.</div>';
       return;
     }
+    renderBarPages();
+    // The grid shows one bar (16 steps) at a time; data-step is the step's
+    // position in the whole pattern.
+    const offset = S.page * STEPS;
     const head = document.createElement('div');
     head.className = 'seq-steps';
-    head.innerHTML = '<span></span>' + Array.from({ length: STEPS }, function (_, s) {
-      return '<span data-step="' + s + '">' + (s % 4 === 0 ? (s / 4 + 1) : '·') + '</span>';
+    head.innerHTML = '<span>Bar ' + (S.page + 1) + '</span>' + Array.from({ length: STEPS }, function (_, s) {
+      return '<span data-step="' + (offset + s) + '">' + (s % 4 === 0 ? (s / 4 + 1) : '·') + '</span>';
     }).join('');
     el.appendChild(head);
     const first = S.bank * 16;
@@ -375,11 +384,12 @@
       label.textContent = padName(i);
       label.addEventListener('click', function () { selectChop(i, true); });
       row.appendChild(label);
-      for (let s = 0; s < STEPS; s++) {
+      for (let k = 0; k < STEPS; k++) {
+        const s = offset + k;
         const cell = document.createElement('button');
-        cell.className = 'cell' + (s % 4 === 0 ? ' beat' : '') + (S.pattern[i][s] ? ' on' : '');
+        cell.className = 'cell' + (k % 4 === 0 ? ' beat' : '') + (S.pattern[i][s] ? ' on' : '');
         cell.dataset.step = s;
-        cell.setAttribute('aria-label', padName(i) + ' step ' + (s + 1));
+        cell.setAttribute('aria-label', padName(i) + ' bar ' + (S.page + 1) + ' step ' + (k + 1));
         cell.addEventListener('click', function () {
           S.pattern[i][s] = !S.pattern[i][s];
           cell.classList.toggle('on', S.pattern[i][s]);
@@ -391,6 +401,38 @@
     }
   }
 
+  // Bar buttons above the grid; a dot marks bars that have hits.
+  function renderBarPages() {
+    const el = $('barPages');
+    el.innerHTML = '';
+    if (S.bars < 2) return;
+    for (let b = 0; b < S.bars; b++) {
+      const btn = document.createElement('button');
+      const used = S.pattern.some(function (row) { return row.slice(b * STEPS, (b + 1) * STEPS).some(Boolean); });
+      btn.className = 'btn' + (b === S.page ? ' on' : '') + (used ? ' used' : '');
+      btn.textContent = 'Bar ' + (b + 1);
+      btn.addEventListener('click', function () { S.page = b; renderSeq(); });
+      el.appendChild(btn);
+    }
+  }
+
+  // Changing the length keeps what's there; a longer pattern repeats it.
+  function setBars(n) {
+    const old = totalSteps();
+    S.bars = n;
+    const total = totalSteps();
+    S.pattern = S.pattern.map(function (row) {
+      const out = new Array(total);
+      for (let s = 0; s < total; s++) out[s] = !!row[s % old];
+      return out;
+    });
+    if (S.page >= S.bars) S.page = 0;
+    $('seqLen').value = String(n);
+    $('bars').value = String(n);
+    if (seq.playing && seq.step >= total) seq.step = 0;
+    renderSeq();
+  }
+
   // ---------- patterns ----------
 
   // Places every chop at the step where it starts in the original loop, so
@@ -398,28 +440,29 @@
   function patternOriginal() {
     const n = chopCount();
     const stepDur = 60 / S.bpm / 4;
-    const loopSteps = Math.max(1, Math.round(S.buffer.duration / stepDur));
+    const total = totalSteps();
     S.pattern = [];
-    for (let i = 0; i < n; i++) S.pattern.push(new Array(STEPS).fill(false));
+    for (let i = 0; i < n; i++) S.pattern.push(new Array(total).fill(false));
     const used = new Set();
     for (let i = 0; i < n; i++) {
       const st = Math.round(S.markers[i] / S.buffer.sampleRate / stepDur);
-      // Only the first bar of the loop fits into 16 steps.
-      if (st < STEPS && st < loopSteps && !used.has(st)) { S.pattern[i][st] = true; used.add(st); }
+      if (st < total && !used.has(st)) { S.pattern[i][st] = true; used.add(st); }
     }
+    S.page = 0;
     renderSeq();
   }
 
   function patternFlip() {
     const n = chopCount();
     S.pattern = [];
-    for (let i = 0; i < n; i++) S.pattern.push(new Array(STEPS).fill(false));
+    for (let i = 0; i < n; i++) S.pattern.push(new Array(totalSteps()).fill(false));
     // A chop on most 8th notes, choosing from the first 16 chops, with the
-    // occasional 16th-note stutter.
+    // occasional 16th-note stutter. Each bar starts on a downbeat chop.
     const pool = Math.min(n, 16);
-    for (let s = 0; s < STEPS; s++) {
+    for (let s = 0; s < totalSteps(); s++) {
       const r = Math.random();
-      if (s === 0 || (s % 2 === 0 && r < 0.75) || (s % 2 === 1 && r < 0.18)) {
+      const down = s % STEPS === 0;
+      if (down || (s % 2 === 0 && r < 0.75) || (s % 2 === 1 && r < 0.18)) {
         const c = s === 0 ? 0 : Math.floor(Math.random() * pool);
         S.pattern[c][s] = true;
       }
@@ -481,9 +524,9 @@
       }
       seq.queue.push({ step: seq.step, time: t });
       seq.step++;
-      if (seq.step >= STEPS) {
+      if (seq.step >= totalSteps()) {
         seq.step = 0;
-        seq.barStart += STEPS * 60 / S.bpm / 4;
+        seq.barStart += totalSteps() * 60 / S.bpm / 4;
       }
     }
   }
@@ -493,7 +536,12 @@
     const now = SF.getContext().currentTime;
     let cur = null;
     while (seq.queue.length && seq.queue[0].time <= now) cur = seq.queue.shift();
-    if (cur) markStep(cur.step);
+    if (cur) {
+      // The grid follows the playhead from bar to bar.
+      const bar = Math.floor(cur.step / STEPS);
+      if (bar !== S.page) { S.page = bar; renderSeq(); }
+      markStep(cur.step);
+    }
     requestAnimationFrame(seqDraw);
   }
 
@@ -551,6 +599,13 @@
       } else {
         setBpm(SF.detectBPM(buffer));
       }
+      // Pattern length = the loop's length in bars (up to 8), so the whole
+      // loop fits in the sequencer.
+      const loopBars = buffer.duration / (240 / S.bpm);
+      S.bars = LENGTHS.filter(function (b) { return b <= loopBars + 0.25; }).pop() || 1;
+      S.page = 0;
+      $('seqLen').value = String(S.bars);
+      $('bars').value = String(S.bars);
       // Drums chop well on transients. Sustained material (chords, pads)
       // gives too few or too many, so slice it per bar instead.
       $('chopMode').value = 'transient';
@@ -609,13 +664,13 @@
 
   // The sequence as MPC notes: 960 ticks per quarter, 240 per 16th step.
   function patternNotes(bars) {
+    // The pattern loops if more bars are asked for than it has.
     const notes = [];
-    for (let bar = 0; bar < bars; bar++) {
-      for (let s = 0; s < STEPS; s++) {
-        const tick = (bar * STEPS + s) * 240 + (s % 2 ? S.swing * 120 : 0);
-        for (let i = 0; i < Math.min(chopCount(), 128); i++) {
-          if (S.pattern[i] && S.pattern[i][s]) notes.push({ tick: tick, pad: i, velocity: 1, len: 240 });
-        }
+    for (let k = 0; k < bars * STEPS; k++) {
+      const s = k % totalSteps();
+      const tick = k * 240 + (k % 2 ? S.swing * 120 : 0);
+      for (let i = 0; i < Math.min(chopCount(), 128); i++) {
+        if (S.pattern[i] && S.pattern[i][s]) notes.push({ tick: tick, pad: i, velocity: 1, len: 240 });
       }
     }
     return notes;
@@ -634,13 +689,11 @@
     const total = bars * STEPS * 60 / S.bpm / 4;
     const oc = new OfflineAudioContext(Math.max(2, S.buffer.numberOfChannels), Math.ceil(total * sr), sr);
     const voices = [];
-    for (let bar = 0; bar < bars; bar++) {
-      const base = bar * STEPS * 60 / S.bpm / 4;
-      for (let s = 0; s < STEPS; s++) {
-        const t = stepTime(s, base);
-        for (let i = 0; i < chopCount(); i++) {
-          if (S.pattern[i] && S.pattern[i][s]) startVoice(oc, oc.destination, i, t, voices);
-        }
+    for (let k = 0; k < bars * STEPS; k++) {
+      const s = k % totalSteps();
+      const t = stepTime(k, 0);
+      for (let i = 0; i < chopCount(); i++) {
+        if (S.pattern[i] && S.pattern[i][s]) startVoice(oc, oc.destination, i, t, voices);
       }
     }
     return oc.startRendering();
@@ -772,9 +825,10 @@
     $('oSwing').textContent = e.target.value + '%';
   });
   $('patOriginal').addEventListener('click', patternOriginal);
+  $('seqLen').addEventListener('change', function (e) { setBars(parseInt(e.target.value, 10)); });
   $('patFlip').addEventListener('click', patternFlip);
   $('patClear').addEventListener('click', function () {
-    S.pattern = S.pattern.map(function () { return new Array(STEPS).fill(false); });
+    S.pattern = S.pattern.map(function () { return new Array(totalSteps()).fill(false); });
     renderSeq();
   });
 

@@ -108,6 +108,11 @@
         <button id="tapTempo" class="btn">Tap</button>
       </div>
       <div class="group">
+        <label class="num">Length
+          <select id="seqLen">
+            <option value="1">1 bar</option><option value="2">2 bars</option><option value="4">4 bars</option><option value="8">8 bars</option>
+          </select>
+        </label>
         <label class="slider">Swing <input id="swing" type="range" min="0" max="75" value="0"><output id="oSwing">0%</output></label>
       </div>
       <div class="group">
@@ -116,6 +121,7 @@
         <button id="patClear" class="btn ghost" disabled>Clear</button>
       </div>
     </div>
+    <div class="bar-pages" id="barPages"></div>
     <div class="seq-scroll">
       <div class="seq" id="seq"></div>
     </div>
@@ -139,7 +145,7 @@
         <button id="exportPattern" class="btn primary" disabled>Pattern .wav</button>
       </div>
     </div>
-    <p class="hint">Chops export with their flips baked in. Unzip, copy the folder to your MPC, and load the <code>.xpm</code>: chop 1 is pad A01. The <code>.mpcpattern</code> (length set by Bars) can be imported into a track that uses that program. The pattern .wav renders the 16 steps at the current BPM for the chosen number of bars, ready to loop.</p>
+    <p class="hint">Chops export with their flips baked in. Unzip, copy the folder to your MPC, and load the <code>.xpm</code>: chop 1 is pad A01. The <code>.mpcpattern</code> (length set by Bars) can be imported into a track that uses that program. The pattern .wav renders the sequence at the current BPM for the chosen number of bars (it loops if that's longer than the pattern), ready to loop.</p>
   </section>
 
   <div id="dropOverlay" class="drop-overlay">Drop to load</div>
