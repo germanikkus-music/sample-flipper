@@ -230,7 +230,13 @@
     S.pattern = [];
     setMarkers(list, false);
     patternOriginal();
-    status(chopCount() + ' chops.', 'ok');
+    if ($('chopMode').value === 'transient' && chopCount() < 4) {
+      // Chords, pads and full songstarters have few sharp hits.
+      status('Only ' + chopCount() + ' hit' + (chopCount() === 1 ? '' : 's') + ' found: this sounds sustained. ' +
+        'Switch to Equal slices, raise Sensitivity, or add markers by hand.', 'error');
+    } else {
+      status(chopCount() + ' chops.', 'ok');
+    }
   }
 
   function selectChop(i, play) {
@@ -821,6 +827,7 @@
     S.selected = -1;
     setMarkers([0], false);
     selectChop(0, false);
+    status('Chops cleared: the whole sample is on A01. Press Chop to chop again, or add markers.');
   });
   $('selMode').addEventListener('click', function () {
     wf.selectMode = !wf.selectMode;

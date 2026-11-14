@@ -40,8 +40,8 @@
       </div>
       <div class="group">
         <select id="chopMode" disabled aria-label="Chop mode">
-          <option value="transient">Transients</option>
-          <option value="equal">Equal slices</option>
+          <option value="transient">Transients (drums)</option>
+          <option value="equal">Equal slices (chords, songs)</option>
         </select>
         <label class="slider" id="sensWrap">Sensitivity
           <input id="sensitivity" type="range" min="0" max="100" value="50" disabled>
@@ -50,7 +50,7 @@
           <option>4</option><option selected>8</option><option>16</option><option>32</option>
         </select>
         <button id="chopBtn" class="btn accent" disabled>Chop</button>
-        <button id="clearMarkers" class="btn ghost" disabled>Clear</button>
+        <button id="clearMarkers" class="btn ghost" disabled title="Remove every marker (the whole sample becomes one chop)">Clear chops</button>
       </div>
       <div class="group">
         <button id="zoomOut" class="btn icon" disabled aria-label="Zoom out">−</button>

@@ -31,12 +31,15 @@ again. After that a double-click works.
    the rest. Either one re-chops the result. **Undo** (<kbd>⌘Z</kbd>) puts it
    back; <kbd>Esc</kbd> or a click clears the selection.
 4. **Chop**:
-   - **Transients** with a **Sensitivity** slider (good for drums).
+   - **Transients** with a **Sensitivity** slider (good for drums). If it
+     finds fewer than 4 hits, the status line says so: switch to Equal slices.
    - **Equal slices**: 4, 8, 16 or 32 (good for chords and pads; sustained
      loops are sliced one chop per bar automatically).
    - **Tap chop** (or <kbd>M</kbd>): plays the sample; tap on each hit to drop
      a marker.
    - **+ Marker**: when on, clicking the waveform adds a marker.
+   - **Clear chops** removes every marker, so the whole sample is one chop
+     on A01. Press **Chop** to chop again.
    - Drag markers to adjust. Right-click a marker, or select it and press
      <kbd>Delete</kbd>, to remove it.
    - Scroll or pinch to zoom, drag to pan, click the overview strip to jump.
