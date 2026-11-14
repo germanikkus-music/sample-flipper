@@ -22,6 +22,7 @@
     bpm: 90,
     swing: 0,
     voices: [],
+    history: [],    // buffers before each Keep / Cut, for Undo
   };
 
   // ---------- helpers ----------
@@ -129,8 +130,11 @@
     const src = ctx.createBufferSource();
     src.buffer = S.buffer;
     src.connect(SF.master);
-    const offset = 0;
-    src.start(ctx.currentTime, offset);
+    // With a selection, play just that range so the trim can be heard first.
+    const sel = wf.selection;
+    const offset = sel ? sel.a / S.buffer.sampleRate : 0;
+    if (sel) src.start(ctx.currentTime, offset, (sel.b - sel.a) / S.buffer.sampleRate);
+    else src.start(ctx.currentTime, offset);
     samplePlay = { src: src, t0: ctx.currentTime, offset: offset };
     src.onended = function () { if (samplePlay && samplePlay.src === src) stopSample(); };
     $('playSample').textContent = '■ Stop';
@@ -252,7 +256,8 @@
     const has = !!S.buffer;
     const hasChops = chopCount() > 0;
     ['playSample', 'tapMark', 'markMode', 'chopMode', 'sensitivity', 'slices', 'chopBtn', 'clearMarkers',
-      'zoomIn', 'zoomOut', 'zoomFit', 'bpmDetect'].forEach(function (id) { $(id).disabled = !has; });
+      'zoomIn', 'zoomOut', 'zoomFit', 'bpmDetect', 'selMode'].forEach(function (id) { $(id).disabled = !has; });
+    renderTrim();
     ['seqPlay', 'patOriginal', 'patFlip', 'patClear', 'exportChops', 'exportPattern'].forEach(function (id) {
       $(id).disabled = !hasChops;
     });
@@ -264,7 +269,21 @@
     let txt = fmtTime(b.duration) + ' · ' + b.sampleRate + ' Hz · ' + (b.numberOfChannels > 1 ? 'stereo' : 'mono') +
       ' · ' + chopCount() + ' chop' + (chopCount() === 1 ? '' : 's');
     if (chopCount() > 16) txt += ' (banks A–' + 'ABCD'[Math.ceil(chopCount() / 16) - 1] + ')';
+    const sel = wf.selection;
+    if (sel) {
+      const sec = (sel.b - sel.a) / b.sampleRate;
+      const bars = sec / (240 / S.bpm);
+      txt += ' · selection ' + fmtTime(sec) + ' = ' + (Math.round(bars * 100) / 100) + ' bar' + (bars === 1 ? '' : 's') +
+        ' at ' + S.bpm + ' BPM';
+    }
     $('info').textContent = txt;
+  }
+
+  function renderTrim() {
+    const sel = !!wf.selection;
+    $('keepSel').disabled = !sel;
+    $('cutSel').disabled = !sel;
+    $('undoEdit').disabled = !S.history.length;
   }
 
   function renderBanks() {
@@ -572,41 +591,98 @@
     stopSample();
     return SF.decode(ab).then(function (buffer) {
       if (!buffer || !buffer.length) throw new Error('empty audio');
-      S.buffer = buffer;
       S.name = safeName(name);
-      S.selected = -1;
-      S.bank = 0;
+      S.history = [];
       $('fileName').textContent = name;
       $('waveEmpty').hidden = true;
-      wf.setBuffer(buffer);
       const fromName = SF.bpmFromName(name);
       if (fromName) {
         setBpm(SF.bpmFromLength(buffer.duration, fromName));
       } else {
         setBpm(SF.detectBPM(buffer));
       }
-      // Every load starts on the default 4 bars; Length can shrink it.
-      S.bars = 4;
-      $('seqLen').value = String(S.bars);
-      $('bars').value = String(S.bars);
-      // Drums chop well on transients. Sustained material (chords, pads)
-      // gives too few or too many, so slice it per bar instead.
-      $('chopMode').value = 'transient';
-      const hits = SF.detectTransients(buffer, $('sensitivity').value / 100, MAX_CHOPS, S.bpm).length;
-      if (hits < 4 || hits > 32) {
-        const bars = buffer.duration / (240 / S.bpm);
-        const n = [4, 8, 16, 32].reduce(function (a, b) { return Math.abs(b - bars) < Math.abs(a - bars) ? b : a; });
-        $('chopMode').value = 'equal';
-        $('slices').value = String(n);
-      }
-      $('chopMode').dispatchEvent(new Event('change'));
-      autoChop();
-      selectChop(0, false);
+      useBuffer(buffer);
       status('Loaded ' + name + ' · ' + chopCount() + ' chops · ' + S.bpm + ' BPM' +
         (fromName ? ' (from file name)' : ' (detected)') + '.', 'ok');
     }).catch(function (err) { decodeFailed(name, err); });
   }
   SF.loadArrayBuffer = loadArrayBuffer;
+
+  // Shows a buffer and chops it. Used on load and after every Keep / Cut / Undo.
+  function useBuffer(buffer) {
+    if (seq.playing) seqStop();
+    stopSample();
+    S.buffer = buffer;
+    S.selected = -1;
+    S.bank = 0;
+    wf.setBuffer(buffer);
+    // Every load starts on the default 4 bars; Length can shrink it.
+    S.bars = 4;
+    $('seqLen').value = String(S.bars);
+    $('bars').value = String(S.bars);
+    // Drums chop well on transients. Sustained material (chords, pads)
+    // gives too few or too many, so slice it per bar instead.
+    $('chopMode').value = 'transient';
+    const hits = SF.detectTransients(buffer, $('sensitivity').value / 100, MAX_CHOPS, S.bpm).length;
+    if (hits < 4 || hits > 32) {
+      const bars = buffer.duration / (240 / S.bpm);
+      const n = [4, 8, 16, 32].reduce(function (a, b) { return Math.abs(b - bars) < Math.abs(a - bars) ? b : a; });
+      $('chopMode').value = 'equal';
+      $('slices').value = String(n);
+    }
+    $('chopMode').dispatchEvent(new Event('change'));
+    autoChop();
+    selectChop(0, false);
+  }
+
+  // ---------- trim ----------
+
+  // Keep: trim the sample to the selection. Cut: remove the selection and
+  // join the two sides. Either way the sample is chopped again from scratch.
+  function editBuffer(kind) {
+    const sel = wf.selection;
+    if (!S.buffer || !sel) return;
+    const src = S.buffer;
+    // Land both edges on zero crossings so the new start, end or join doesn't click.
+    const a = sel.a <= 0 ? 0 : SF.snapZero(src, sel.a);
+    const b = sel.b >= src.length ? src.length : SF.snapZero(src, sel.b);
+    const len = kind === 'keep' ? b - a : src.length - (b - a);
+    if (len < src.sampleRate * 0.05) {
+      status(kind === 'keep' ? 'Selection is too short to keep.' : 'That would cut almost everything. Use Keep instead.', 'error');
+      return;
+    }
+    const out = new AudioBuffer({ numberOfChannels: src.numberOfChannels, length: len, sampleRate: src.sampleRate });
+    for (let c = 0; c < src.numberOfChannels; c++) {
+      const x = src.getChannelData(c);
+      const y = out.getChannelData(c);
+      if (kind === 'keep') {
+        y.set(x.subarray(a, b));
+      } else {
+        y.set(x.subarray(0, a));
+        y.set(x.subarray(b), a);
+      }
+    }
+    S.history.push(src);
+    if (S.history.length > 20) S.history.shift();
+    useBuffer(out);
+    const bars = out.duration / (240 / S.bpm);
+    status((kind === 'keep' ? 'Trimmed to ' : 'Cut. Now ') + fmtTime(out.duration) + ' (' +
+      (Math.round(bars * 100) / 100) + ' bars) · ' + chopCount() + ' chops. Undo puts it back.', 'ok');
+  }
+
+  function undoEdit() {
+    if (!S.history.length) return;
+    useBuffer(S.history.pop());
+    status('Undone · ' + fmtTime(S.buffer.duration) + ' · ' + chopCount() + ' chops.', 'ok');
+  }
+
+  // Selection edges snap to the beat grid (counted from the start of the
+  // sample) when Snap to beat is on.
+  function snapToBeat(s) {
+    if (!S.buffer || !$('snapBeat').checked) return s;
+    const beat = 60 / S.bpm * S.buffer.sampleRate;
+    return Math.min(S.buffer.length, Math.round(s / beat) * beat);
+  }
 
   // ---------- export ----------
 
@@ -714,8 +790,10 @@
       if (S.selected >= 0) playChop(S.selected);
     },
     onDeleteMarker: function (i) { deleteMarker(i); },
+    onSelectionChange: function () { renderTrim(); renderInfo(); },
   });
   wf.colorFor = chopColor;
+  wf.snap = snapToBeat;
 
   $('file').addEventListener('change', function (e) { loadFile(e.target.files[0]); e.target.value = ''; });
   $('playSample').addEventListener('click', playSample);
@@ -744,6 +822,14 @@
     setMarkers([0], false);
     selectChop(0, false);
   });
+  $('selMode').addEventListener('click', function () {
+    wf.selectMode = !wf.selectMode;
+    $('selMode').setAttribute('aria-pressed', String(wf.selectMode));
+    if (wf.selectMode) status('Drag across the waveform to select. Drag the yellow edges to adjust. ▶ Sample plays the selection.');
+  });
+  $('keepSel').addEventListener('click', function () { editBuffer('keep'); });
+  $('cutSel').addEventListener('click', function () { editBuffer('cut'); });
+  $('undoEdit').addEventListener('click', undoEdit);
   $('zoomIn').addEventListener('click', function () { wf.zoom(0.5); });
   $('zoomOut').addEventListener('click', function () { wf.zoom(2); });
   $('zoomFit').addEventListener('click', function () { wf.setView(0, S.buffer.length); });
@@ -826,6 +912,11 @@
   document.addEventListener('keydown', function (e) {
     const tag = (e.target.tagName || '').toLowerCase();
     if ((tag === 'input' && e.target.type !== 'range' && e.target.type !== 'checkbox') || tag === 'select' || tag === 'textarea') return;
+    if ((e.metaKey || e.ctrlKey) && !e.shiftKey && e.key.toLowerCase() === 'z' && S.history.length) {
+      e.preventDefault();
+      undoEdit();
+      return;
+    }
     if (e.metaKey || e.ctrlKey || e.altKey) return;
     const k = e.key.toLowerCase();
     const p = PAD_KEYS.indexOf(k);
@@ -845,6 +936,8 @@
       playSample();
     } else if (k === 'm') {
       if (samplePlay) addMarker(samplePos());
+    } else if (k === 'escape' && wf.selection) {
+      wf.setSelection(null);
     } else if ((k === 'delete' || k === 'backspace') && wf.selectedMarker >= 0) {
       e.preventDefault();
       deleteMarker(wf.selectedMarker);

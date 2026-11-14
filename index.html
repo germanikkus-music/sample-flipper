@@ -31,6 +31,13 @@
         <button id="markMode" class="btn toggle" disabled aria-pressed="false" title="When on, clicking the waveform adds a marker">+ Marker</button>
         <button id="delMarker" class="btn" disabled title="Delete the selected marker (Delete). Right-click a marker also deletes it.">Delete marker</button>
       </div>
+      <div class="group" title="Trim the sample before chopping">
+        <button id="selMode" class="btn toggle" disabled aria-pressed="false" title="When on, drag across the waveform to select a range (or hold Shift and drag any time)">Select</button>
+        <label class="check small"><input type="checkbox" id="snapBeat" checked> Snap to beat</label>
+        <button id="keepSel" class="btn" disabled title="Trim the sample down to the selection">Keep</button>
+        <button id="cutSel" class="btn" disabled title="Remove the selection and join what's left">Cut</button>
+        <button id="undoEdit" class="btn ghost" disabled title="Undo the last Keep or Cut (⌘Z)">Undo</button>
+      </div>
       <div class="group">
         <select id="chopMode" disabled aria-label="Chop mode">
           <option value="transient">Transients</option>
@@ -55,7 +62,7 @@
       <canvas id="wave"></canvas>
       <div class="wave-empty" id="waveEmpty">
         <p><b>Drop a sample here</b> or tap <i>Load sample</i>.</p>
-        <p class="dim">Drag markers to adjust · scroll or pinch to zoom · drag to pan · right-click a marker to delete it</p>
+        <p class="dim">Drag markers to adjust · scroll or pinch to zoom · drag to pan · right-click a marker to delete it · Shift-drag to select a range to Keep or Cut</p>
       </div>
     </div>
     <canvas id="overview" class="overview"></canvas>

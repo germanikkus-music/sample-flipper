@@ -330,3 +330,4 @@ body.dragging .drop-overlay { display: flex; }
   .slider input[type="range"] { width: 90px; }
   .pads { gap: 6px; }
 }
+.check.small { font-size: 12px; color: var(--dim); }

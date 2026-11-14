@@ -18,6 +18,9 @@
     this.selectedMarker = -1;
     this.playhead = -1;
     this.markMode = false;
+    this.selectMode = false;
+    this.selection = null; // { a, b } in samples, a < b
+    this.snap = function (s) { return s; };
     this.pointers = new Map();
     this.drag = null;
     this.colorFor = function () { return '#22e5ff'; };
@@ -62,6 +65,7 @@
       this.bmax[b] = hi;
     }
     this.view = { start: 0, end: buffer.length };
+    this.selection = null;
     this.ovCache = null;
     this.resize();
   };
@@ -115,6 +119,27 @@
     return best;
   };
 
+  Waveform.prototype.edgeAt = function (x) {
+    if (!this.selection) return null;
+    const da = Math.abs(this.sampleToX(this.selection.a) - x);
+    const db = Math.abs(this.sampleToX(this.selection.b) - x);
+    if (Math.min(da, db) >= HIT_PX) return null;
+    return da <= db ? 'a' : 'b';
+  };
+
+  Waveform.prototype.setSelection = function (a, b) {
+    if (a === null || !this.buffer) {
+      this.selection = null;
+    } else {
+      const total = this.buffer.length;
+      a = Math.max(0, Math.min(total, Math.round(a)));
+      b = Math.max(0, Math.min(total, Math.round(b)));
+      this.selection = { a: Math.min(a, b), b: Math.max(a, b) };
+    }
+    this.draw();
+    if (this.cb.onSelectionChange) this.cb.onSelectionChange(this.selection);
+  };
+
   Waveform.prototype.chopAt = function (s) {
     for (let i = this.markers.length - 1; i >= 0; i--) if (s >= this.markers[i]) return i;
     return -1;
@@ -135,6 +160,16 @@
       return;
     }
     const x = this.localX(e);
+    // Selection edges grab first, then a new selection in Select mode or with Shift.
+    const ei = this.edgeAt(x);
+    if (ei) {
+      this.drag = { type: 'select', fixed: ei === 'a' ? this.selection.b : this.selection.a };
+      return;
+    }
+    if (this.selectMode || e.shiftKey) {
+      this.drag = { type: 'selpending', x0: x, s0: this.snap(this.xToSample(x)) };
+      return;
+    }
     const mi = this.markerAt(x);
     if (mi >= 0) {
       this.selectedMarker = mi;
@@ -147,6 +182,10 @@
   };
 
   Waveform.prototype.onMove = function (e) {
+    if (!this.drag && this.buffer) {
+      const hx = this.localX(e);
+      this.canvas.style.cursor = this.edgeAt(hx) ? 'ew-resize' : (this.selectMode ? 'crosshair' : '');
+    }
     if (!this.drag || !this.pointers.has(e.pointerId)) return;
     this.pointers.set(e.pointerId, e.clientX);
     const d = this.drag;
@@ -164,6 +203,12 @@
       this.markers[i] = Math.round(Math.max(lo, Math.min(hi, this.xToSample(x))));
       d.moved = true;
       this.draw();
+    } else if (d.type === 'selpending' || d.type === 'select') {
+      if (d.type === 'selpending') {
+        if (Math.abs(x - d.x0) <= 5) return;
+        this.drag = { type: 'select', fixed: d.s0 };
+      }
+      this.setSelection(this.drag.fixed, this.snap(this.xToSample(x)));
     } else {
       if (d.type === 'pending' && Math.abs(x - d.x0) > 5) d.type = 'pan';
       if (d.type === 'pan') {
@@ -183,7 +228,11 @@
       return;
     }
     this.drag = null;
-    if (d.type === 'marker' && d.moved) {
+    if (d.type === 'selpending') {
+      this.setSelection(null); // a click without a drag clears the selection
+    } else if (d.type === 'select') {
+      if (this.selection && this.selection.b - this.selection.a < 64) this.setSelection(null);
+    } else if (d.type === 'marker' && d.moved) {
       this.cb.onMarkersChange();
     } else if (d.type === 'pending') {
       const s = this.xToSample(this.localX(e));
@@ -292,6 +341,22 @@
     }
     g.lineWidth = 1;
 
+    // Selection: dim everything outside it and outline its edges.
+    if (this.selection) {
+      const xa = toX(this.selection.a), xb = toX(this.selection.b);
+      g.fillStyle = 'rgba(5,6,10,0.62)';
+      if (xa > 0) g.fillRect(0, 0, Math.min(W, xa), H);
+      if (xb < W) g.fillRect(Math.max(0, xb), 0, W - Math.max(0, xb), H);
+      g.fillStyle = 'rgba(255,255,255,0.06)';
+      g.fillRect(xa, 0, xb - xa, H);
+      g.fillStyle = '#ffe066';
+      for (const xe of [xa, xb]) {
+        if (xe < -4 || xe > W + 4) continue;
+        g.fillRect(Math.round(xe) - dpr, 0, 2 * dpr, H);
+        g.fillRect(Math.round(xe) - 5 * dpr, H / 2 - 12 * dpr, 10 * dpr, 24 * dpr);
+      }
+    }
+
     if (this.playhead >= 0) {
       const x = toX(this.playhead);
       g.fillStyle = '#ffffff';
@@ -314,6 +379,11 @@
     const total = this.buffer.length;
     g.fillStyle = 'rgba(181,123,255,0.7)';
     for (const m of this.markers) g.fillRect(Math.round(m / total * W), 0, 1, H);
+    if (this.selection) {
+      g.fillStyle = 'rgba(5,6,10,0.6)';
+      g.fillRect(0, 0, this.selection.a / total * W, H);
+      g.fillRect(this.selection.b / total * W, 0, W, H);
+    }
     const x0 = this.view.start / total * W;
     const x1 = this.view.end / total * W;
     g.fillStyle = 'rgba(34,229,255,0.12)';

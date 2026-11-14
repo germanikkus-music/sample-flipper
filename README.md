@@ -23,7 +23,14 @@ again. After that a double-click works.
 2. **Tempo**: read from the file name when it has one (Splice-style names like
    `OS_ES_90_synth_chords_love_Am.wav` → 90 BPM), otherwise detected from the
    audio. **Detect**, **½**, **×2** and **Tap** adjust it.
-3. **Chop**:
+3. **Trim** (optional, before chopping): turn on **Select** (or hold
+   <kbd>Shift</kbd>) and drag across the waveform. The edges snap to beats
+   while **Snap to beat** is on, and the info line shows the length in bars.
+   Drag the yellow edges to adjust; **▶ Sample** plays just the selection.
+   **Keep** trims the sample to the selection, **Cut** removes it and joins
+   the rest. Either one re-chops the result. **Undo** (<kbd>⌘Z</kbd>) puts it
+   back; <kbd>Esc</kbd> or a click clears the selection.
+4. **Chop**:
    - **Transients** with a **Sensitivity** slider (good for drums).
    - **Equal slices**: 4, 8, 16 or 32 (good for chords and pads; sustained
      loops are sliced one chop per bar automatically).
@@ -33,18 +40,18 @@ again. After that a double-click works.
    - Drag markers to adjust. Right-click a marker, or select it and press
      <kbd>Delete</kbd>, to remove it.
    - Scroll or pinch to zoom, drag to pan, click the overview strip to jump.
-4. **Pads**: 16 pads laid out like the MPC (A01 bottom-left). Click or tap, or
+5. **Pads**: 16 pads laid out like the MPC (A01 bottom-left). Click or tap, or
    use the keys: <kbd>1 2 3 4</kbd> / <kbd>Q W E R</kbd> / <kbd>A S D F</kbd> /
    <kbd>Z X C V</kbd> (top row to bottom row). Up to 64 chops across banks A–D.
-5. **Flip** the selected chop: reverse, pitch (±24 semitones, changes speed
+6. **Flip** the selected chop: reverse, pitch (±24 semitones, changes speed
    like an MPC tune), gain, fade in/out, and choke (choked chops cut each other
    off). **Apply to all** copies the settings to every chop.
-6. **Sequencer**: all bars in one chart, 4 bars by default. **Length**
+7. **Sequencer**: all bars in one chart, 4 bars by default. **Length**
    switches to 2 or 1 bar, which makes the cells bigger. <kbd>Space</kbd>
    plays and stops. **Original** puts each chop where it sat in the loop
    (shorter loops repeat to fill the bars), **Flip it** makes a random
    rearrangement, **Swing** shuffles the 16ths.
-7. **Export**:
+8. **Export**:
    - **Chops .zip**: one WAV per chop with flips baked in, plus an MPC drum
      program (`.xpm`) in the same folder. Unzip, copy the folder to your MPC
      (SD card, USB or the internal drive), and load the `.xpm`. Chop 1 is on

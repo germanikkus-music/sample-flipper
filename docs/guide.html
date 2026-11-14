@@ -111,7 +111,7 @@
       <p>BPM comes from the file name (Splice: <i>OS_ES_<b>90</b>_…</i>) or is detected. Fix it with ½, ×2 or Tap.</p>
       <div class="where">Sequencer bar</div></div>
     <div class="step" style="--c: var(--chop)"><h3><span class="n">3</span>Chop</h3>
-      <p>Auto-chop on hits, cut into equal slices, or tap along. Drag markers to fine-tune.</p>
+      <p>Too long? <b>Select</b> a range, then <b>Keep</b> or <b>Cut</b>. Auto-chop on hits, equal slices, or tap along. Drag markers to fine-tune.</p>
       <div class="where">Waveform</div></div>
     <div class="step rowend" style="--c: var(--pads)"><h3><span class="n">4</span>Play pads</h3>
       <p>Every chop lands on a pad, A01 bottom-left like the MPC. Click, tap or use the keyboard.</p>
@@ -187,7 +187,7 @@
     <span style="--c:var(--load)">Load</span><span style="--c:var(--chop)">Chop</span><span style="--c:var(--nav)">Navigate</span>
     <span style="--c:var(--pads)">Pads</span><span style="--c:var(--flip)">Flip</span>
   </div>
-  <div class="shot" style="width: 90%; margin: 0 auto"><div class="crop" id="crop1"></div></div>
+  <div class="shot" style="width: 80%; margin: 0 auto"><div class="crop" id="crop1"></div></div>
   <div class="legend" id="legend1"></div>
   <div class="foot"><span>Sample Flipper · quick guide</span><span>2 / 3</span></div>
 </section>
@@ -207,30 +207,31 @@
   // Positions in the app's CSS pixels (screenshot is 1180 px wide).
   const SHOT_W = 1180;
   const C = (v) => 'var(--' + v + ')';
-  const topHalf = { y0: 0, y1: 1022, el: 'crop1', legend: 'legend1', items: [
+  const topHalf = { y0: 0, y1: 1065, el: 'crop1', legend: 'legend1', items: [
     { n: 1, c: 'load', x: 838, y: 10, w: 108, h: 38, t: 'Load sample', d: 'Pick a file, or drop one anywhere on the page. The file name shows next to it.' },
     { n: 2, c: 'load', x: 16, y: 56, w: 1148, h: 37, t: 'Status', d: 'What just happened: chops found, BPM and where it came from, export results, errors.' },
-    { n: 3, c: 'chop', x: 27, y: 111, w: 177, h: 38, t: '▶ Sample · Tap chop', d: 'Play the whole sample. Tap chop drops a marker on each tap while it plays (or press M).' },
+    { n: 3, c: 'chop', x: 27, y: 111, w: 177, h: 38, t: '▶ Sample · Tap chop', d: 'Play the sample (or just the selection). Tap chop drops a marker on each tap while it plays (or M).' },
     { n: 4, c: 'chop', x: 205, y: 111, w: 200, h: 38, t: '+ Marker · Delete marker', d: 'With + Marker on, clicking the waveform adds a marker. Delete removes the selected one.' },
-    { n: 5, c: 'chop', x: 418, y: 111, w: 431, h: 38, t: 'Chop mode', d: 'Transients + Sensitivity (more = more chops) or Equal slices 4/8/16/32. Chop re-runs it; Clear starts over.' },
-    { n: 6, c: 'nav', x: 861, y: 111, w: 124, h: 38, t: 'Zoom − + Fit', d: 'Zoom the waveform. Fit shows the whole sample again.' },
-    { n: 7, c: 'chop', x: 29, y: 157, w: 1122, h: 220, t: 'Waveform', d: 'Each shaded region is a chop; the purple flags are markers, numbered by pad. Click a chop to hear it, drag a flag to move it.' },
-    { n: 8, c: 'nav', x: 29, y: 383, w: 1122, h: 58, t: 'Overview + info', d: 'The whole sample in miniature: click or drag to jump the zoomed view. Below: length, sample rate, chop count.' },
-    { n: 9, c: 'pads', x: 77, y: 515, w: 470, h: 465, t: '16 pads', d: 'One chop per pad, laid out like the MPC. Shows pad name, key, length and flips (REV, +5st…).' },
-    { n: 10, c: 'pads', x: 469, y: 477, w: 131, h: 31, t: 'Banks', d: 'Appear when there are more than 16 chops (up to 64: banks A–D).' },
-    { n: 11, c: 'flip', x: 623, y: 466, w: 541, h: 400, t: 'Flip panel', d: 'Edits the selected chop: Reverse, Choke (chops cut each other off), Pitch ±24 semitones, Gain, Fades. ▶ auditions it.' },
-    { n: 12, c: 'flip', x: 634, y: 805, w: 300, h: 40, t: 'Reset · Apply to all · Export chop', d: 'Undo this chop’s flips, copy them to every chop, or save just this chop as a WAV.' },
+    { n: 5, c: 'load', x: 418, y: 111, w: 356, h: 38, t: 'Select · Keep · Cut · Undo', d: 'Trim first: with Select on (or Shift held) drag a range, snapped to beats. Keep trims to it, Cut removes it, Undo (⌘Z) puts it back.' },
+    { n: 6, c: 'chop', x: 27, y: 154, w: 418, h: 38, t: 'Chop mode', d: 'Transients + Sensitivity (more = more chops) or Equal slices 4/8/16/32. Chop re-runs it; Clear starts over.' },
+    { n: 7, c: 'nav', x: 455, y: 154, w: 142, h: 38, bdx: 150, bdy: 28, t: 'Zoom − + Fit', d: 'Zoom the waveform. Fit shows the whole sample again.' },
+    { n: 8, c: 'chop', x: 29, y: 200, w: 1122, h: 220, t: 'Waveform', d: 'Each shaded region is a chop; the purple flags are markers, numbered by pad. Click a chop to hear it, drag a flag to move it.' },
+    { n: 9, c: 'nav', x: 29, y: 426, w: 1122, h: 58, t: 'Overview + info', d: 'The whole sample in miniature: click to jump there. Below: length, chops, and the selection in bars.' },
+    { n: 10, c: 'pads', x: 77, y: 558, w: 470, h: 465, t: '16 pads', d: 'One chop per pad, laid out like the MPC. Shows pad name, key, length and flips (REV, +5st…).' },
+    { n: 11, c: 'pads', x: 469, y: 520, w: 131, h: 31, t: 'Banks', d: 'Appear when there are more than 16 chops (up to 64: banks A–D).' },
+    { n: 12, c: 'flip', x: 623, y: 509, w: 541, h: 400, t: 'Flip panel', d: 'Edits the selected chop: Reverse, Choke (chops cut each other off), Pitch ±24 semitones, Gain, Fades. ▶ auditions it.' },
+    { n: 13, c: 'flip', x: 634, y: 848, w: 300, h: 40, t: 'Reset · Apply to all · Export chop', d: 'Undo this chop’s flips, copy them to every chop, or save just this chop as a WAV.' },
   ]};
-  const bottomHalf = { y0: 1004, y1: 1553, el: 'crop2', legend: 'legend2', items: [
-    { n: 13, c: 'seq', x: 27, y: 1039, w: 70, h: 38, t: 'Play / Stop', d: 'Loops the pattern (Space does the same). Pads light up and a white outline runs along the grid.' },
-    { n: 14, c: 'tempo', x: 98, y: 1039, w: 320, h: 38, t: 'BPM · Detect · ½ · ×2 · Tap', d: 'Type a tempo, detect it from the audio, halve or double it, or tap it in.' },
-    { n: 15, c: 'seq', x: 430, y: 1039, w: 129, h: 38, t: 'Length', d: '4 bars by default; 2 or 1 bar gives bigger cells. Making it longer repeats what’s there.' },
-    { n: 16, c: 'seq', x: 561, y: 1039, w: 188, h: 38, t: 'Swing', d: 'Pushes every second 16th later for a shuffled feel. Applies to playback and exports.' },
-    { n: 17, c: 'seq', x: 759, y: 1039, w: 205, h: 38, t: 'Original · Flip it · Clear', d: 'Original puts every chop where it sat in the loop (shorter loops repeat to fill). Flip it makes a random new arrangement.' },
-    { n: 18, c: 'seq', x: 29, y: 1084, w: 1122, h: 305, t: 'Step grid', d: 'All bars in one chart, violet lines between bars. Rows = pads, columns = 16th steps. Click a cell to place that chop there.' },
-    { n: 19, c: 'export', x: 27, y: 1449, w: 614, h: 38, t: 'Export options', d: 'Bit depth, and whether the zip includes the MPC drum program (.xpm) and the sequence (.mpcpattern).' },
-    { n: 20, c: 'export', x: 643, y: 1449, w: 94, h: 38, t: 'Chops .zip', d: 'Every chop as a WAV with flips baked in, plus the .xpm and .mpcpattern, in one folder.' },
-    { n: 21, c: 'export', x: 750, y: 1449, w: 190, h: 38, t: 'Bars · Pattern .wav', d: 'Renders the beat to one WAV, exactly that many bars, ready to loop (the pattern repeats if Bars is longer). Bars also sets the .mpcpattern length.' },
+  const bottomHalf = { y0: 1049, y1: 1598, el: 'crop2', legend: 'legend2', items: [
+    { n: 14, c: 'seq', x: 27, y: 1084, w: 70, h: 38, t: 'Play / Stop', d: 'Loops the pattern (Space does the same). Pads light up and a white outline runs along the grid.' },
+    { n: 15, c: 'tempo', x: 98, y: 1084, w: 320, h: 38, t: 'BPM · Detect · ½ · ×2 · Tap', d: 'Type a tempo, detect it from the audio, halve or double it, or tap it in.' },
+    { n: 16, c: 'seq', x: 430, y: 1084, w: 129, h: 38, t: 'Length', d: '4 bars by default; 2 or 1 bar gives bigger cells. Making it longer repeats what’s there.' },
+    { n: 17, c: 'seq', x: 561, y: 1084, w: 188, h: 38, t: 'Swing', d: 'Pushes every second 16th later for a shuffled feel. Applies to playback and exports.' },
+    { n: 18, c: 'seq', x: 759, y: 1084, w: 205, h: 38, t: 'Original · Flip it · Clear', d: 'Original puts every chop where it sat in the loop (shorter loops repeat to fill). Flip it makes a random new arrangement.' },
+    { n: 19, c: 'seq', x: 29, y: 1129, w: 1122, h: 305, t: 'Step grid', d: 'All bars in one chart, violet lines between bars. Rows = pads, columns = 16th steps. Click a cell to place that chop there.' },
+    { n: 20, c: 'export', x: 27, y: 1494, w: 614, h: 38, t: 'Export options', d: 'Bit depth, and whether the zip includes the MPC drum program (.xpm) and the sequence (.mpcpattern).' },
+    { n: 21, c: 'export', x: 643, y: 1494, w: 94, h: 38, t: 'Chops .zip', d: 'Every chop as a WAV with flips baked in, plus the .xpm and .mpcpattern, in one folder.' },
+    { n: 22, c: 'export', x: 750, y: 1494, w: 190, h: 38, t: 'Bars · Pattern .wav', d: 'Renders the beat to one WAV, exactly that many bars, ready to loop (the pattern repeats if Bars is longer). Bars also sets the .mpcpattern length.' },
   ]};
 
   function build(spec) {
@@ -252,7 +253,8 @@
       const b = document.createElement('div');
       b.className = 'badge';
       b.textContent = it.n;
-      const bx = Math.max(2, it.x * k - 4), by = Math.max(2, (it.y - spec.y0) * k - 19);
+      // bdx/bdy (screenshot px) nudge a badge off a neighbouring control.
+      const bx = Math.max(2, (it.x + (it.bdx || 0)) * k - 4), by = Math.max(2, (it.y + (it.bdy || 0) - spec.y0) * k - 19);
       b.style.cssText = `--c:${C(it.c)};left:${bx}px;top:${by}px`;
       crop.appendChild(b);
       const li = document.createElement('div');
