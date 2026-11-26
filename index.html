@@ -76,7 +76,7 @@
         <div class="banks" id="banks"></div>
       </div>
       <div class="pads" id="pads"></div>
-      <p class="hint">Keys: <kbd>1-4</kbd> <kbd>Q-R</kbd> <kbd>A-F</kbd> <kbd>Z-V</kbd> play pads (laid out like the MPC). <kbd>Space</kbd> play/stop pattern.</p>
+      <p class="hint">Keys: <kbd>1-4</kbd> <kbd>Q-R</kbd> <kbd>A-F</kbd> <kbd>Z-V</kbd> play pads (laid out like the MPC). <kbd>Space</kbd> play/stop pattern, <kbd>B</kbd> beat.</p>
     </section>
 
     <section class="panel edit-panel">
@@ -104,15 +104,49 @@
     </section>
   </div>
 
+  <section class="panel beat-panel">
+    <div class="toolbar">
+      <div class="group">
+        <button id="beatGo" class="btn primary beat-go" title="Start / stop the drums (B). With a pattern playing, they come in on its bar 1.">▶ Beat</button>
+        <label class="num">Beat style <select id="beatStyle"></select></label>
+        <label class="num" title="What the beat and the pattern play at. The chops are warped to it.">Tempo <input id="tempo" type="number" min="40" max="240" step="0.1" value="90"></label>
+        <button id="tempoTap" class="btn" title="Tap 4 times in time to set the Tempo">Tap</button>
+      </div>
+      <div class="group">
+        <label class="slider">Drums <input id="beatLevel" type="range" min="0" max="1" step="0.01" value="0.7"></label>
+        <label class="check" title="A drum fill at the end of every 4th bar"><input type="checkbox" id="beatFills" checked> Fills every 4 bars</label>
+        <label class="check" title="▶ Play starts the drums too, both on bar 1, and ■ Stop stops both"><input type="checkbox" id="beatWithPlay" checked> Drums with ▶ Play</label>
+      </div>
+      <div class="group">
+        <label class="num" title="How the chops fit the Tempo when it isn't the sample's own tempo">Warp
+          <select id="warp">
+            <option value="stretch">Keep pitch (stretch)</option>
+            <option value="repitch">Repitch (MPC-style)</option>
+            <option value="off">Off (chops just start on the beat)</option>
+          </select>
+        </label>
+        <button id="matchBeat" class="btn ghost" title="Set the Tempo to the sample's own tempo, so nothing is warped">Tempo = sample</button>
+      </div>
+      <div class="beat-dots" id="beatDots"><i></i><i></i><i></i><i></i><span id="beatBar"></span></div>
+    </div>
+    <div class="info" id="tempoInfo"></div>
+  </section>
+
   <section class="panel seq-panel">
     <div class="toolbar">
       <div class="group">
         <button id="seqPlay" class="btn primary" disabled>▶ Play</button>
-        <label class="num">BPM <input id="bpm" type="number" min="40" max="240" step="0.1" value="90"></label>
+        <label class="num" title="The sample's own tempo: where its beats and bars fall">Sample BPM <input id="bpm" type="number" min="40" max="240" step="0.1" value="90"></label>
         <button id="bpmDetect" class="btn" disabled title="Detect tempo from the loaded loop">Detect</button>
         <button id="bpmHalf" class="btn icon" title="Half tempo">½</button>
         <button id="bpmDouble" class="btn icon" title="Double tempo">×2</button>
-        <button id="tapTempo" class="btn">Tap</button>
+        <button id="tapTempo" class="btn" title="Tap along to the sample to set its tempo">Tap</button>
+        <label class="num" title="How many bars the sample is. Sets Sample BPM from its length.">Sample is
+          <select id="loopBars">
+            <option value="0">auto</option><option value="1">1 bar</option><option value="2">2 bars</option>
+            <option value="4">4 bars</option><option value="8">8 bars</option><option value="16">16 bars</option>
+          </select>
+        </label>
       </div>
       <div class="group">
         <label class="num">Length
@@ -163,13 +197,14 @@
         <button id="exportPattern" class="btn primary" disabled>Pattern .wav</button>
       </div>
     </div>
-    <p class="hint">Chops export with their flips baked in. Unzip, copy the folder to your MPC, and load the <code>.xpm</code>: chop 1 is pad A01. The <code>.mpcpattern</code> (length set by Bars) can be imported into a track that uses that program. The pattern .wav renders the sequence at the current BPM for the chosen number of bars (it loops if that's longer than the pattern), ready to loop.</p>
+    <p class="hint">Chops export with their flips baked in. Unzip, copy the folder to your MPC, and load the <code>.xpm</code>: chop 1 is pad A01. The <code>.mpcpattern</code> (length set by Bars) can be imported into a track that uses that program. The pattern .wav renders the sequence at the Tempo (warped, without the drums) for the chosen number of bars (it loops if that's longer than the pattern), ready to loop.</p>
   </section>
 
   <div id="dropOverlay" class="drop-overlay">Drop to load</div>
 
   <script src="js/zip.js"></script>
   <script src="js/audio.js"></script>
+  <script src="js/beat.js"></script>
   <script src="js/analysis.js"></script>
   <script src="js/waveform.js"></script>
   <script src="js/xpm.js"></script>

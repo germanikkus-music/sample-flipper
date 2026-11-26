@@ -19,7 +19,15 @@
     bars: 4,        // pattern length (4 bars by default)
     selected: -1,
     bank: 0,
-    bpm: 90,
+    bpm: 90,        // the sample's own tempo (Sample BPM)
+    tempo: 90,      // what the beat and the pattern play at (Tempo)
+    tempoSet: false, // true once you set the Tempo yourself; until then it follows Sample BPM
+    warp: 'stretch', // how chops fit the Tempo: 'stretch' (keep pitch), 'repitch' or 'off'
+    warped: [],     // time-stretched chops per chop index, for the current Tempo
+    beatStyle: 'neosoul',
+    beatLevel: 0.7,
+    beatFills: true,
+    beatWithPlay: true,
     swing: 0,
     voices: [],
     history: [],    // buffers before each Keep / Cut, for Undo
@@ -78,8 +86,9 @@
   // Shared by live playback and offline rendering so both sound the same.
   function startVoice(ctx, dest, i, when, voices) {
     const f = S.flips[i];
-    const buf = chopBuffer(i);
-    const rate = SF.rateFromSemis(f.pitch);
+    const vb = voiceBuffer(i); // warped to the Tempo
+    const buf = vb.buf;
+    const rate = vb.rate;
     if (f.choke) {
       for (const v of voices) {
         if (!v.choke || v.end <= when || v.start > when) continue;
@@ -276,6 +285,8 @@
     let txt = fmtTime(b.duration) + ' · ' + b.sampleRate + ' Hz · ' + (b.numberOfChannels > 1 ? 'stereo' : 'mono') +
       ' · ' + chopCount() + ' chop' + (chopCount() === 1 ? '' : 's');
     if (chopCount() > 16) txt += ' (banks A–' + 'ABCD'[Math.ceil(chopCount() / 16) - 1] + ')';
+    const perBar = SF.Beat.steps(S.beatStyle) / 4;
+    txt += ' · ' + (Math.round(b.duration / (60 * perBar / S.bpm) * 100) / 100) + ' bars at ' + S.bpm + ' BPM';
     const sel = wf.selection;
     if (sel) {
       const sec = (sel.b - sel.a) / b.sampleRate;
@@ -624,32 +635,110 @@
     renderFlipNav();
   }
 
-  // ---------- sequencer ----------
+  // ---------- clock: the sequencer and the drum beat ----------
+  //
+  // One clock runs both, one 16th-note step at a time at the Tempo, so they
+  // can't drift apart. Whichever starts second waits for bar 1 of the one
+  // already playing. Each step's time is worked out from the tempo as it is
+  // then, so changing the tempo or the style mid-play stays in time.
+  // The chops are warped from the sample's own tempo (Sample BPM) to the Tempo.
 
-  const seq = { playing: false, step: 0, next: 0, timer: 0, queue: [] };
+  const seq = { playing: false, pending: false, step: 0, queue: [], withBeat: false };
+  const beat = { on: false, pending: false, step: 0, bar: 0, ui: [], taps: [] };
+  const clock = { running: false, next: 0, timer: 0 };
 
+  // For the offline render (Pattern .wav): step k of a pattern starting at base.
   function stepTime(stepIndex, base) {
-    const dur = 60 / S.bpm / 4;
+    const dur = 60 / S.tempo / 4;
     return base + stepIndex * dur + (stepIndex % 2 ? S.swing * dur * 0.5 : 0);
   }
 
-  function seqStart() {
+  function clockStart() {
+    if (clock.running) return;
     const ctx = SF.getContext();
-    stopSample();
-    seq.playing = true;
-    seq.step = 0;
-    seq.barStart = ctx.currentTime + 0.06;
-    seq.queue = [];
-    seq.timer = setInterval(seqTick, 25);
-    seqTick();
-    $('seqPlay').textContent = '■ Stop';
-    $('seqPlay').classList.add('on');
-    requestAnimationFrame(seqDraw);
+    clock.running = true;
+    clock.next = ctx.currentTime + 0.06;
+    clock.timer = setInterval(clockTick, 25);
+    clockTick();
+    requestAnimationFrame(clockDraw);
   }
 
-  function seqStop() {
+  function clockCheck() {
+    if (seq.playing || seq.pending || beat.on || beat.pending) return;
+    clearInterval(clock.timer);
+    clock.running = false;
+  }
+
+  // Schedules every step that falls in the next 120 ms.
+  function clockTick() {
+    const ctx = SF.getContext();
+    while (clock.next < ctx.currentTime + 0.12) clockStep(ctx, clock.next);
+  }
+
+  function clockStep(ctx, t) {
+    // Newcomers come in on bar 1 of whatever is already playing.
+    if (beat.pending && (!seq.playing || seq.step % STEPS === 0)) {
+      beat.pending = false; beat.on = true; beat.step = 0; beat.bar = 0;
+    }
+    if (seq.pending && (!beat.on || beat.step === 0)) {
+      seq.pending = false; seq.playing = true; seq.step = 0;
+    }
+    if (beat.on) {
+      const n = SF.Beat.steps(S.beatStyle);
+      if (beat.step >= n) { beat.step = 0; beat.bar++; } // style changed to 3/4 mid-bar
+      SF.Beat.playStep(S.beatStyle, beat.step, beat.bar,
+        t + SF.Beat.swingOffset(S.beatStyle, beat.step, S.tempo), S.beatFills);
+      beat.ui.push({ t: t, step: beat.step, bar: beat.bar });
+      if (++beat.step >= n) { beat.step = 0; beat.bar++; }
+    }
+    if (seq.playing) {
+      if (seq.step >= totalSteps()) seq.step = 0;
+      const ts = t + (seq.step % 2 ? S.swing * (60 / S.tempo / 4) * 0.5 : 0);
+      for (let i = 0; i < chopCount(); i++) {
+        if (S.pattern[i] && S.pattern[i][seq.step]) {
+          startVoice(ctx, SF.master, i, Math.max(ts, ctx.currentTime), S.voices);
+          flashPad(i, (ts - ctx.currentTime) * 1000);
+        }
+      }
+      seq.queue.push({ step: seq.step, time: t });
+      if (++seq.step >= totalSteps()) seq.step = 0;
+    }
+    clock.next = t + 60 / S.tempo / 4;
+  }
+
+  let shownTransport = '';
+  function clockDraw() {
+    const now = SF.getContext().currentTime;
+    let cur = null;
+    while (seq.queue.length && seq.queue[0].time <= now) cur = seq.queue.shift();
+    if (cur) markStep(cur.step);
+    let b = null;
+    while (beat.ui.length && beat.ui[0].t <= now) b = beat.ui.shift();
+    if (b) showBeat(b);
+    const key = [seq.playing, seq.pending, beat.on, beat.pending].join();
+    if (key !== shownTransport) renderTransport();
+    if (clock.running) requestAnimationFrame(clockDraw);
+  }
+
+  function seqStart() {
+    if (!S.buffer || !chopCount()) return;
+    SF.getContext();
+    stopSample();
+    seq.pending = true;
+    seq.step = 0;
+    seq.queue = [];
+    // "Drums with ▶ Play": both start together on bar 1, and ■ Stop stops both.
+    seq.withBeat = S.beatWithPlay && !beat.on && !beat.pending;
+    if (seq.withBeat) beatArm();
+    prewarm(true);
+    clockStart();
+    renderTransport();
+  }
+
+  // keepBeat: leave drums that ▶ Play started running (used when loading or trimming).
+  function seqStop(keepBeat) {
     seq.playing = false;
-    clearInterval(seq.timer);
+    seq.pending = false;
     const ctx = SF.getContext();
     for (const v of S.voices) {
       try {
@@ -659,38 +748,60 @@
       } catch (e) { /* already stopped */ }
     }
     S.voices = [];
-    $('seqPlay').textContent = '▶ Play';
-    $('seqPlay').classList.remove('on');
+    seq.queue = [];
     markStep(-1);
+    if (seq.withBeat && !keepBeat) beatStop();
+    seq.withBeat = false;
+    clockCheck();
+    renderTransport();
   }
 
-  function seqTick() {
-    const ctx = SF.getContext();
-    while (true) {
-      const t = stepTime(seq.step, seq.barStart);
-      if (t > ctx.currentTime + 0.12) break;
-      for (let i = 0; i < chopCount(); i++) {
-        if (S.pattern[i] && S.pattern[i][seq.step]) {
-          startVoice(ctx, SF.master, i, Math.max(t, ctx.currentTime), S.voices);
-          flashPad(i, (t - ctx.currentTime) * 1000);
-        }
-      }
-      seq.queue.push({ step: seq.step, time: t });
-      seq.step++;
-      if (seq.step >= totalSteps()) {
-        seq.step = 0;
-        seq.barStart += totalSteps() * 60 / S.bpm / 4;
-      }
-    }
+  function beatArm() {
+    SF.Beat.bus(S.beatLevel);
+    beat.pending = true;
+    beat.ui = [];
   }
 
-  function seqDraw() {
-    if (!seq.playing) return;
-    const now = SF.getContext().currentTime;
-    let cur = null;
-    while (seq.queue.length && seq.queue[0].time <= now) cur = seq.queue.shift();
-    if (cur) markStep(cur.step);
-    requestAnimationFrame(seqDraw);
+  function beatButton() {
+    if (beat.on || beat.pending) return beatStop();
+    beatArm();
+    clockStart();
+    renderTransport();
+  }
+
+  function beatStop() {
+    beat.on = false;
+    beat.pending = false;
+    beat.ui = [];
+    seq.withBeat = false;
+    SF.Beat.silence();
+    clockCheck();
+    showBeat(null);
+    renderTransport();
+  }
+
+  function renderTransport() {
+    shownTransport = [seq.playing, seq.pending, beat.on, beat.pending].join();
+    const p = $('seqPlay');
+    p.textContent = seq.playing ? '■ Stop' : seq.pending ? '… bar 1' : '▶ Play';
+    p.classList.toggle('on', seq.playing || seq.pending);
+    const g = $('beatGo');
+    g.textContent = beat.on ? '■ Beat' : beat.pending ? '… bar 1' : '▶ Beat';
+    g.classList.toggle('on', beat.on || beat.pending);
+    renderTempoInfo();
+  }
+
+  function showBeat(pos) {
+    const n = SF.Beat.steps(S.beatStyle) / 4;
+    const at = pos ? Math.floor(pos.step / 4) : -1;
+    document.querySelectorAll('#beatDots i').forEach(function (d, i) {
+      d.classList.toggle('on', beat.on && i === at);
+      d.classList.toggle('one', i === 0);
+      d.style.display = i < n ? '' : 'none';
+    });
+    const bar = $('beatBar');
+    const fill = pos && S.beatFills && SF.Beat.BEATS[S.beatStyle].fill !== false && pos.bar % 4 === 3;
+    bar.textContent = beat.on && pos ? 'Bar ' + (pos.bar + 1) + (fill ? ' · fill' : '') : '';
   }
 
   function markStep(s) {
@@ -701,12 +812,127 @@
     });
   }
 
+  // ---------- tempo and warp ----------
+
+  // How much faster than its own tempo the sample plays (1 = as recorded).
+  function warpRatio() {
+    return S.buffer && S.bpm > 0 ? S.tempo / S.bpm : 1;
+  }
+  SF.warpRatio = warpRatio;
+
+  // The buffer and playback rate a chop plays with at the current tempo.
+  // Keep pitch: the chop is time-stretched (cached per tempo).
+  // Repitch: it plays faster or slower, so the pitch moves too, like a record.
+  // Off: as recorded; each chop still starts on its step.
+  function voiceBuffer(i) {
+    const base = chopBuffer(i);
+    const pitch = SF.rateFromSemis(S.flips[i].pitch);
+    const r = warpRatio();
+    if (S.warp === 'off' || Math.abs(r - 1) < 0.002) return { buf: base, rate: pitch };
+    if (S.warp === 'repitch') return { buf: base, rate: pitch * r };
+    const factor = Math.round(1e4 / r) / 1e4;
+    const w = S.warped[i];
+    if (w && w.src === base && w.factor === factor) return { buf: w.out, rate: pitch };
+    const out = SF.stretch(base, factor);
+    S.warped[i] = { src: base, factor: factor, out: out };
+    return { buf: out, rate: pitch };
+  }
+
+  // Stretches the chops ahead of time so playback doesn't have to.
+  // now: do the chops the pattern uses right away (before Play starts).
+  let prewarmTimer = 0;
+  function prewarm(now) {
+    clearTimeout(prewarmTimer);
+    if (!S.buffer || S.warp !== 'stretch' || Math.abs(warpRatio() - 1) < 0.002) return;
+    const used = [], rest = [];
+    for (let i = 0; i < chopCount(); i++) (S.pattern[i] && S.pattern[i].some(Boolean) ? used : rest).push(i);
+    if (now) used.forEach(voiceBuffer);
+    const todo = now ? rest : used.concat(rest);
+    const next = function () {
+      const i = todo.shift();
+      if (i == null) return;
+      if (i < chopCount()) voiceBuffer(i);
+      prewarmTimer = setTimeout(next, 0);
+    };
+    prewarmTimer = setTimeout(next, now ? 0 : 150);
+  }
+
+  // Sample BPM: the sample's own tempo. Until you set the Tempo yourself
+  // (type it, Tap it), the Tempo follows it, so nothing is warped.
   function setBpm(v, note) {
     v = Math.round(Math.max(40, Math.min(240, v)) * 10) / 10;
     if (!isFinite(v)) return;
     S.bpm = v;
     $('bpm').value = v;
+    if (!S.tempoSet) setTempo(v);
+    renderTempoInfo();
+    renderInfo();
+    prewarm(false);
     if (note) status(note, 'ok');
+  }
+
+  // Tempo: what the beat and the pattern play at.
+  function setTempo(v, byUser) {
+    v = Math.round(Math.max(40, Math.min(240, v)) * 10) / 10;
+    if (!isFinite(v)) return;
+    S.tempo = v;
+    if (byUser) S.tempoSet = true;
+    $('tempo').value = v;
+    renderTempoInfo();
+    prewarm(false);
+    saveBeat();
+  }
+
+  function renderTempoInfo() {
+    const el = $('tempoInfo');
+    if (!S.buffer) { el.textContent = 'Load a sample: its chops play in time with the beat.'; return; }
+    const r = warpRatio();
+    let txt = 'Sample ' + S.bpm + ' BPM';
+    if (Math.abs(r - 1) < 0.002) {
+      txt += ' = Tempo, so it plays as recorded.';
+    } else {
+      const pct = Math.round(Math.abs(r - 1) * 100);
+      const how = S.warp === 'stretch' ? 'stretched ' + pct + '% ' + (r > 1 ? 'faster' : 'slower') + ', same pitch'
+        : S.warp === 'repitch' ? (r > 1 ? 'sped up ' : 'slowed down ') + pct + '%, pitch ' +
+          (r > 1 ? '+' : '−') + Math.abs(12 * Math.log2(r)).toFixed(1) + ' st'
+        : 'not warped: each chop starts on its step, ' + (r > 1 ? 'long ones get cut off' : 'with gaps between');
+      txt += ' → plays at ' + S.tempo + ' (' + how + ').';
+    }
+    el.textContent = txt;
+    $('matchBeat').disabled = Math.abs(r - 1) < 0.002;
+  }
+
+  function saveBeat() {
+    try {
+      localStorage.setItem('sf.beat', JSON.stringify({
+        beatStyle: S.beatStyle, beatLevel: S.beatLevel, beatFills: S.beatFills, beatWithPlay: S.beatWithPlay,
+        warp: S.warp, tempo: S.tempo, tempoSet: S.tempoSet,
+      }));
+    } catch (e) { /* private mode */ }
+  }
+
+  function loadBeatPrefs() {
+    let p = {};
+    try { p = JSON.parse(localStorage.getItem('sf.beat') || '{}') || {}; } catch (e) { /* ignore */ }
+    if (p.beatStyle && SF.Beat.BEATS[p.beatStyle]) S.beatStyle = p.beatStyle;
+    if (typeof p.beatLevel === 'number') S.beatLevel = p.beatLevel;
+    if (typeof p.beatFills === 'boolean') S.beatFills = p.beatFills;
+    if (typeof p.beatWithPlay === 'boolean') S.beatWithPlay = p.beatWithPlay;
+    if (['stretch', 'repitch', 'off'].indexOf(p.warp) >= 0) S.warp = p.warp;
+    if (p.tempoSet && p.tempo >= 40 && p.tempo <= 240) { S.tempo = p.tempo; S.tempoSet = true; }
+  }
+
+  // "Loop is N bars": the sample's tempo from its length.
+  function setLoopBars(n) {
+    if (!S.buffer) return;
+    if (!n) {
+      const fromName = SF.bpmFromName(S.name);
+      setBpm(fromName ? SF.bpmFromLength(S.buffer.duration, fromName) : SF.detectBPM(S.buffer));
+      return;
+    }
+    const perBar = SF.Beat.steps(S.beatStyle) / 4; // beats in a bar (3 for the 3/4 styles)
+    setBpm(60 * n * perBar / S.buffer.duration, 'Sample is ' + n + ' bar' + (n > 1 ? 's' : '') + ' long, so its tempo is ' +
+      (Math.round(600 * n * perBar / S.buffer.duration) / 10) + ' BPM.');
   }
 
   // ---------- loading ----------
@@ -730,7 +956,7 @@
   }
 
   function loadArrayBuffer(ab, name) {
-    if (seq.playing) seqStop();
+    if (seq.playing || seq.pending) seqStop(true);
     stopSample();
     return SF.decode(ab).then(function (buffer) {
       if (!buffer || !buffer.length) throw new Error('empty audio');
@@ -753,9 +979,11 @@
 
   // Shows a buffer and chops it. Used on load and after every Keep / Cut / Undo.
   function useBuffer(buffer) {
-    if (seq.playing) seqStop();
+    if (seq.playing || seq.pending) seqStop(true);
     stopSample();
     S.buffer = buffer;
+    S.warped = [];
+    $('loopBars').value = '0';
     S.selected = -1;
     S.bank = 0;
     wf.setBuffer(buffer);
@@ -776,6 +1004,7 @@
     $('chopMode').dispatchEvent(new Event('change'));
     autoChop();
     selectChop(0, false);
+    renderTempoInfo();
   }
 
   // ---------- trim ----------
@@ -823,8 +1052,8 @@
   // sample) when Snap to beat is on.
   function snapToBeat(s) {
     if (!S.buffer || !$('snapBeat').checked) return s;
-    const beat = 60 / S.bpm * S.buffer.sampleRate;
-    return Math.min(S.buffer.length, Math.round(s / beat) * beat);
+    const len = 60 / S.bpm * S.buffer.sampleRate;
+    return Math.min(S.buffer.length, Math.round(s / len) * len);
   }
 
   // ---------- export ----------
@@ -856,7 +1085,7 @@
     }
     const notes = patternNotes(parseInt($('bars').value, 10));
     if ($('withPattern').checked && notes.length) {
-      const pname = name + ' ' + String(S.bpm).replace('.', '_') + 'bpm.mpcpattern';
+      const pname = name + ' ' + String(S.tempo).replace('.', '_') + 'bpm.mpcpattern';
       files.push({ name: name + '/' + pname, data: new TextEncoder().encode(SF.buildMpcPattern(notes)) });
       extras.push(pname);
     }
@@ -888,7 +1117,7 @@
 
   async function renderPattern(bars) {
     const sr = S.buffer.sampleRate;
-    const total = bars * STEPS * 60 / S.bpm / 4;
+    const total = bars * STEPS * 60 / S.tempo / 4;
     const oc = new OfflineAudioContext(Math.max(2, S.buffer.numberOfChannels), Math.ceil(total * sr), sr);
     const voices = [];
     for (let k = 0; k < bars * STEPS; k++) {
@@ -912,7 +1141,7 @@
     const out = await renderPattern(bars);
     const peak = SF.peak(out);
     const scale = peak > 0.99 ? 0.98 / peak : 1;
-    const file = S.name + '_flip_' + String(S.bpm).replace('.', '_') + 'bpm_' + bars + 'bar.wav';
+    const file = S.name + '_flip_' + String(S.tempo).replace('.', '_') + 'bpm_' + bars + 'bar.wav';
     SF.download(new Blob([SF.encodeWav(out, bitDepth(), scale)], { type: 'audio/wav' }), file);
     status('Exported ' + file + (scale < 1 ? ' (turned down ' + (20 * Math.log10(scale)).toFixed(1) + ' dB to avoid clipping)' : '') + '.', 'ok');
   }
@@ -1028,7 +1257,38 @@
   $('exportChop').addEventListener('click', function () { exportOneChop().catch(exportFailed); });
 
   // Sequencer controls.
-  $('seqPlay').addEventListener('click', function () { seq.playing ? seqStop() : seqStart(); });
+  $('seqPlay').addEventListener('click', function () { seq.playing || seq.pending ? seqStop() : seqStart(); });
+  $('loopBars').addEventListener('change', function (e) { setLoopBars(parseInt(e.target.value, 10)); });
+
+  // Beat controls.
+  Object.keys(SF.Beat.BEATS).forEach(function (id) {
+    const b = SF.Beat.BEATS[id];
+    $('beatStyle').add(new Option(b.name + ' · ' + b.bpm, id));
+  });
+  $('beatGo').addEventListener('click', beatButton);
+  $('beatStyle').addEventListener('change', function (e) {
+    S.beatStyle = e.target.value; showBeat(null); renderInfo(); saveBeat(); e.target.blur();
+  });
+  $('tempo').addEventListener('change', function (e) { setTempo(parseFloat(e.target.value), true); });
+  $('tempoTap').addEventListener('click', function () {
+    const now = performance.now();
+    beat.taps = beat.taps.filter(function (t) { return now - t < 2500; }).concat(now);
+    if (beat.taps.length >= 2) {
+      const gaps = beat.taps.slice(1).map(function (t, i) { return t - beat.taps[i]; });
+      setTempo(Math.round(60000 / (gaps.reduce(function (a, b) { return a + b; }) / gaps.length)), true);
+    }
+  });
+  $('beatLevel').addEventListener('input', function (e) { S.beatLevel = +e.target.value; SF.Beat.bus(S.beatLevel); saveBeat(); });
+  $('beatFills').addEventListener('change', function (e) { S.beatFills = e.target.checked; saveBeat(); });
+  $('beatWithPlay').addEventListener('change', function (e) { S.beatWithPlay = e.target.checked; saveBeat(); });
+  $('warp').addEventListener('change', function (e) {
+    S.warp = e.target.value; renderTempoInfo(); prewarm(false); saveBeat(); e.target.blur();
+  });
+  $('matchBeat').addEventListener('click', function () {
+    S.tempoSet = false;
+    setTempo(S.bpm);
+    status('Tempo set to the sample\'s ' + S.bpm + ' BPM. It follows the sample again until you change it.', 'ok');
+  });
   $('bpm').addEventListener('change', function (e) { setBpm(parseFloat(e.target.value)); });
   $('bpmDetect').addEventListener('click', function () {
     setBpm(SF.detectBPM(S.buffer), 'Detected tempo: ' + SF.detectBPM(S.buffer) + ' BPM. Use ½ or ×2 if it is off by an octave.');
@@ -1084,10 +1344,14 @@
       e.preventDefault();
       return;
     }
+    if (k === 'b') {
+      beatButton();
+      return;
+    }
     if (!S.buffer) return;
     if (k === ' ') {
       e.preventDefault();
-      if (chopCount()) seq.playing ? seqStop() : seqStart();
+      if (chopCount()) seq.playing || seq.pending ? seqStop() : seqStart();
     } else if (k === 'p') {
       playSample();
     } else if (k === 'm') {
@@ -1114,5 +1378,14 @@
   });
 
   SF.state = S;
+  loadBeatPrefs();
+  $('beatStyle').value = S.beatStyle;
+  $('beatLevel').value = S.beatLevel;
+  $('beatFills').checked = S.beatFills;
+  $('beatWithPlay').checked = S.beatWithPlay;
+  $('warp').value = S.warp;
+  $('tempo').value = S.tempo;
+  showBeat(null);
+  renderTempoInfo();
   renderAll();
 })(window.SF = window.SF || {});

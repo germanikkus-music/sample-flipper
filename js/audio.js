@@ -105,6 +105,76 @@
     return oc.startRendering();
   };
 
+  // Time-stretch without changing pitch (WSOLA). factor = new length / old
+  // length, so 1.25 is 25% longer (slower). Short overlapping grains are laid
+  // down at the new spacing; each one is nudged to the spot in the source
+  // that lines up best with the last, so the waveform joins without phasing.
+  // Works on plain channel arrays so it can run (and be tested) anywhere.
+  SF.stretchChannels = function (chans, sr, factor) {
+    const inLen = chans[0].length;
+    const outLen = Math.max(1, Math.round(inLen * factor));
+    const N = Math.max(256, Math.round(sr * 0.04) & ~1); // 40 ms grains
+    const Hs = N / 2;                                  // output hop
+    const Ha = Hs / factor;                            // input hop
+    const tol = Math.round(N / 4);                     // how far a grain may move
+    const out = chans.map(function () { return new Float32Array(outLen); });
+    if (inLen < N * 2 || Math.abs(factor - 1) < 1e-4) {
+      // Too short to stretch (a single hit): keep it as is, cut or padded.
+      chans.forEach(function (c, k) { out[k].set(c.subarray(0, Math.min(inLen, outLen))); });
+      return out;
+    }
+    const w = new Float32Array(N);
+    for (let i = 0; i < N; i++) w[i] = 0.5 - 0.5 * Math.cos(2 * Math.PI * (i + 0.5) / N);
+    const norm = new Float32Array(outLen);
+    // Mono guide for the alignment search.
+    const mono = new Float32Array(inLen);
+    chans.forEach(function (c) { for (let i = 0; i < inLen; i++) mono[i] += c[i]; });
+    const maxPos = inLen - N;
+    const STRIDE = 4;
+    let prev = 0;
+    for (let k = 0; k * Hs < outLen; k++) {
+      const outPos = k * Hs;
+      let best;
+      if (k === 0) {
+        best = 0;
+      } else {
+        const nominal = Math.round(k * Ha);
+        const natural = prev + Hs; // where the last grain would carry on
+        best = Math.min(maxPos, Math.max(0, nominal));
+        if (natural <= maxPos) {
+          let bestScore = -Infinity;
+          const lo = Math.max(0, nominal - tol), hi = Math.min(maxPos, nominal + tol);
+          for (let x = lo; x <= hi; x += 2) {
+            let s = 0;
+            for (let i = 0; i < Hs; i += STRIDE) s += mono[x + i] * mono[natural + i];
+            if (s > bestScore) { bestScore = s; best = x; }
+          }
+        }
+      }
+      const n = Math.min(N, outLen - outPos);
+      for (let c = 0; c < chans.length; c++) {
+        const src = chans[c], dst = out[c];
+        for (let i = 0; i < n; i++) dst[outPos + i] += src[best + i] * w[i];
+      }
+      for (let i = 0; i < n; i++) norm[outPos + i] += w[i];
+      prev = best;
+    }
+    for (let c = 0; c < out.length; c++) {
+      const d = out[c];
+      for (let i = 0; i < outLen; i++) if (norm[i] > 1e-6) d[i] /= norm[i];
+    }
+    return out;
+  };
+
+  SF.stretch = function (buffer, factor) {
+    const chans = [];
+    for (let c = 0; c < buffer.numberOfChannels; c++) chans.push(buffer.getChannelData(c));
+    const res = SF.stretchChannels(chans, buffer.sampleRate, factor);
+    const out = SF.getContext().createBuffer(buffer.numberOfChannels, res[0].length, buffer.sampleRate);
+    res.forEach(function (d, c) { out.getChannelData(c).set(d); });
+    return out;
+  };
+
   SF.peak = function (buffer) {
     let p = 0;
     for (let ch = 0; ch < buffer.numberOfChannels; ch++) {

@@ -287,6 +287,16 @@ output { font-variant-numeric: tabular-nums; color: var(--text); font-size: 12px
 .cell.bar.on { box-shadow: -2px 0 0 0 rgba(163, 91, 255, 0.55), 0 0 6px color-mix(in srgb, var(--c) 60%, transparent); }
 .cell.on:not(.bar) { box-shadow: 0 0 6px color-mix(in srgb, var(--c) 60%, transparent); }
 .cell.now { outline: 1px solid rgba(255, 255, 255, 0.75); outline-offset: -1px; }
+
+/* Beat */
+.beat-panel .toolbar { margin-bottom: 4px; }
+.beat-go { min-width: 92px; font-weight: 700; }
+#beatStyle { max-width: 230px; }
+.beat-dots { display: flex; align-items: center; gap: 8px; }
+.beat-dots i { width: 14px; height: 14px; border-radius: 50%; background: var(--panel-2); border: 1px solid var(--line); }
+.beat-dots i.on { background: var(--cyan); box-shadow: 0 0 10px var(--cyan); }
+.beat-dots i.on.one { background: var(--violet); box-shadow: 0 0 12px var(--violet); }
+.beat-dots span { color: var(--dim); font-size: 12px; min-width: 70px; font-variant-numeric: tabular-nums; }
 /* Fewer bars on screen: taller cells to match the wider ones. */
 .seq[data-bars="2"] .cell, .seq[data-bars="2"] .seq-label { height: 24px; }
 .seq[data-bars="1"] .cell, .seq[data-bars="1"] .seq-label { height: 30px; }
