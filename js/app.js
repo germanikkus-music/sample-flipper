@@ -230,6 +230,7 @@
     S.pattern = [];
     setMarkers(list, false);
     patternOriginal();
+    resetFlips();
     if ($('chopMode').value === 'transient' && chopCount() < 4) {
       // Chords, pads and full songstarters have few sharp hits.
       status('Only ' + chopCount() + ' hit' + (chopCount() === 1 ? '' : 's') + ' found: this sounds sustained. ' +
@@ -446,45 +447,181 @@
 
   // ---------- patterns ----------
 
-  // Places every chop at the step where it starts in the original loop, so
-  // pressing Play first gives back (roughly) the source groove.
-  function patternOriginal() {
-    const n = chopCount();
+  // The original groove as one chop per step (-1 = rest): each chop at the
+  // step where it starts in the loop. A loop shorter than the pattern
+  // repeats to fill it (a 1-bar loop plays 4 times in the default 4 bars).
+  function originalGrid() {
     const stepDur = 60 / S.bpm / 4;
     const total = totalSteps();
-    S.pattern = [];
-    for (let i = 0; i < n; i++) S.pattern.push(new Array(total).fill(false));
-    // A loop shorter than the pattern repeats to fill it (a 1-bar loop
-    // plays 4 times in the default 4 bars).
+    const grid = new Array(total).fill(-1);
     const loopSteps = Math.max(1, Math.round(S.buffer.duration / stepDur / STEPS) * STEPS);
-    const used = new Set();
-    for (let i = 0; i < n; i++) {
+    for (let i = 0; i < chopCount(); i++) {
       const st0 = Math.round(S.markers[i] / S.buffer.sampleRate / stepDur);
       for (let st = st0; st < total; st += loopSteps) {
-        if (!used.has(st)) { S.pattern[i][st] = true; used.add(st); }
+        if (grid[st] < 0) grid[st] = i;
         if (loopSteps >= total) break;
       }
     }
+    return grid;
+  }
+
+  // Writes a one-chop-per-step grid into the pattern (clearing everything else).
+  function setPatternFromGrid(grid) {
+    S.pattern = [];
+    for (let i = 0; i < chopCount(); i++) S.pattern.push(new Array(totalSteps()).fill(false));
+    grid.forEach(function (c, st) { if (c >= 0 && c < chopCount()) S.pattern[c][st] = true; });
     renderSeq();
   }
 
-  function patternFlip() {
-    const n = chopCount();
-    S.pattern = [];
-    for (let i = 0; i < n; i++) S.pattern.push(new Array(totalSteps()).fill(false));
-    // A chop on most 8th notes, choosing from the first 16 chops, with the
-    // occasional 16th-note stutter. Each bar starts on a downbeat chop.
-    const pool = Math.min(n, 16);
-    for (let s = 0; s < totalSteps(); s++) {
-      const r = Math.random();
-      const down = s % STEPS === 0;
-      if (down || (s % 2 === 0 && r < 0.75) || (s % 2 === 1 && r < 0.18)) {
-        const c = s === 0 ? 0 : Math.floor(Math.random() * pool);
-        S.pattern[c][s] = true;
+  // Pressing Play first gives back (roughly) the source groove.
+  function patternOriginal() {
+    setPatternFromGrid(originalGrid());
+  }
+
+  // ---------- auto-flip ----------
+
+  function rnd(n) { return Math.floor(Math.random() * n); }
+  function chance(p) { return Math.random() < p; }
+
+  function shuffled(a) {
+    a = a.slice();
+    for (let i = a.length - 1; i > 0; i--) {
+      const k = rnd(i + 1);
+      const t = a[i]; a[i] = a[k]; a[k] = t;
+    }
+    return a;
+  }
+
+  // Each style turns the pool (the pads of the current bank, A01-A16) into a
+  // one-chop-per-step grid. `orig` is the original groove.
+  const FLIP_STYLES = {
+    // A chop on most 8ths, the occasional 16th, each bar on a downbeat chop.
+    random: function (pool, total) {
+      const g = new Array(total).fill(-1);
+      for (let s = 0; s < total; s++) {
+        const r = Math.random();
+        if (s % STEPS === 0 || (s % 2 === 0 && r < 0.75) || (s % 2 === 1 && r < 0.18)) {
+          g[s] = s === 0 ? pool[0] : pool[rnd(pool.length)];
+        }
       }
+      return g;
+    },
+    // Same rhythm as the original, chops swapped around.
+    shuffle: function (pool, total, orig) {
+      const map = shuffled(pool);
+      return orig.map(function (c) { return c < 0 ? -1 : map[poolIndex(pool, c)]; });
+    },
+    // Hits on the beats with gaps between, plus the odd pickup 16th.
+    stab: function (pool, total) {
+      const g = new Array(total).fill(-1);
+      for (let s = 0; s < total; s++) {
+        const k = s % 4;
+        if ((k === 0 && (s % STEPS === 0 || chance(0.8))) || (k === 3 && chance(0.25)) || (k === 2 && chance(0.15))) {
+          g[s] = pool[rnd(pool.length)];
+        }
+      }
+      return g;
+    },
+    // A chop per beat; some beats roll it as 16ths or 8ths, more often at the end of a bar.
+    stutter: function (pool, total) {
+      const g = new Array(total).fill(-1);
+      for (let b = 0; b < total; b += 4) {
+        const c = pool[rnd(pool.length)];
+        const r = Math.random();
+        const lastBeat = b % STEPS === STEPS - 4;
+        if (r < (lastBeat ? 0.65 : 0.3)) { for (let k = 0; k < 4; k++) g[b + k] = c; }
+        else if (r < 0.55) { g[b] = c; g[b + 2] = c; }
+        else { g[b] = c; if (chance(0.4)) g[b + 2] = pool[rnd(pool.length)]; }
+      }
+      return g;
+    },
+    // The original groove at half speed: every hit twice as far apart.
+    half: function (pool, total, orig) {
+      const g = new Array(total).fill(-1);
+      for (let s = 0; s < total; s += 2) g[s] = orig[s / 2];
+      return g;
+    },
+    // Same rhythm as the original, chops in reverse order (A16 where A01 was).
+    reverse: function (pool, total, orig) {
+      return orig.map(function (c) { return c < 0 ? -1 : pool[pool.length - 1 - poolIndex(pool, c)]; });
+    },
+    // Bars 1 and 3 keep the original, bars 2 and 4 answer with a flip.
+    callresp: function (pool, total, orig) {
+      const answer = FLIP_STYLES.random(pool, total);
+      const half = total <= STEPS ? STEPS / 2 : STEPS; // 1 bar: call and answer are half a bar each
+      return orig.map(function (c, s) { return Math.floor(s / half) % 2 ? answer[s] : c; });
+    },
+  };
+  const FLIP_NAMES = {
+    random: 'Random', shuffle: 'Shuffle', stab: 'Chop & stab', stutter: 'Stutter',
+    half: 'Half-time', reverse: 'Reverse order', callresp: 'Call & response',
+  };
+
+  // Chops from other banks map onto the pool by their pad number.
+  function poolIndex(pool, c) {
+    const k = pool.indexOf(c);
+    return k >= 0 ? k : c % pool.length;
+  }
+
+  // The last flips, so a good one can be found again. `at` is the one showing.
+  const flipHistory = { list: [], at: -1 };
+  const MAX_FLIPS = 20;
+
+  function patternFlip() {
+    const first = S.bank * 16;
+    const pool = [];
+    for (let i = first; i < Math.min(chopCount(), first + 16); i++) pool.push(i);
+    if (!pool.length) return;
+    const style = $('flipStyle').value;
+    // Keep any edits made to the flip that's showing before adding a new one.
+    saveFlip();
+    setPatternFromGrid(FLIP_STYLES[style](pool, totalSteps(), originalGrid()));
+    flipHistory.list = flipHistory.list.slice(0, flipHistory.at + 1);
+    flipHistory.list.push({ style: style, pattern: copyPattern() });
+    if (flipHistory.list.length > MAX_FLIPS) flipHistory.list.shift();
+    flipHistory.at = flipHistory.list.length - 1;
+    renderFlipNav();
+    status('Flip ' + (flipHistory.at + 1) + ': ' + FLIP_NAMES[style] + '. Hit Play, Flip it again, or use ◀ ▶ to go back to an earlier flip.', 'ok');
+  }
+
+  function copyPattern() { return S.pattern.map(function (r) { return r.slice(); }); }
+
+  function saveFlip() {
+    const f = flipHistory.list[flipHistory.at];
+    if (f && f.pattern.length === S.pattern.length) f.pattern = copyPattern();
+  }
+
+  function showFlip(at) {
+    if (at < 0 || at >= flipHistory.list.length) return;
+    saveFlip();
+    flipHistory.at = at;
+    const f = flipHistory.list[at];
+    // A flip made at another length is repeated or cut to fit, like Length does.
+    const total = totalSteps();
+    // Chops added or deleted since then get empty rows or are dropped.
+    S.pattern = [];
+    for (let i = 0; i < chopCount(); i++) {
+      const row = f.pattern[i];
+      const out = new Array(total).fill(false);
+      if (row) for (let s = 0; s < total; s++) out[s] = !!row[s % row.length];
+      S.pattern.push(out);
     }
     renderSeq();
-    status('Flipped. Hit Play, or Flip it again.', 'ok');
+    renderFlipNav();
+    status('Flip ' + (at + 1) + ' of ' + flipHistory.list.length + ': ' + FLIP_NAMES[f.style] + '.', 'ok');
+  }
+
+  function renderFlipNav() {
+    const n = flipHistory.list.length;
+    $('flipPrev').disabled = flipHistory.at <= 0;
+    $('flipNext').disabled = flipHistory.at >= n - 1;
+    $('flipCount').textContent = n ? (flipHistory.at + 1) + '/' + n : '';
+  }
+
+  function resetFlips() {
+    flipHistory.list = [];
+    flipHistory.at = -1;
+    renderFlipNav();
   }
 
   // ---------- sequencer ----------
@@ -913,6 +1050,8 @@
   $('patOriginal').addEventListener('click', patternOriginal);
   $('seqLen').addEventListener('change', function (e) { setBars(parseInt(e.target.value, 10)); });
   $('patFlip').addEventListener('click', patternFlip);
+  $('flipPrev').addEventListener('click', function () { showFlip(flipHistory.at - 1); });
+  $('flipNext').addEventListener('click', function () { showFlip(flipHistory.at + 1); });
   $('patClear').addEventListener('click', function () {
     S.pattern = S.pattern.map(function () { return new Array(totalSteps()).fill(false); });
     renderSeq();

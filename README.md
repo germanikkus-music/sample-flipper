@@ -54,8 +54,20 @@ again. After that a double-click works.
 7. **Sequencer**: all bars in one chart, 4 bars by default. **Length**
    switches to 2 or 1 bar, which makes the cells bigger. <kbd>Space</kbd>
    plays and stops. **Original** puts each chop where it sat in the loop
-   (shorter loops repeat to fill the bars), **Flip it** makes a random
-   rearrangement, **Swing** shuffles the 16ths.
+   (shorter loops repeat to fill the bars), **Swing** shuffles the 16ths.
+   **Flip it** rearranges pads A01–A16 (the bank on screen) in the style
+   picked next to it:
+   - **Random**: a chop on most 8ths, the odd 16th, each bar on a downbeat.
+   - **Shuffle**: the original rhythm with the chops swapped around.
+   - **Chop & stab**: hits on the beats with gaps between.
+   - **Stutter**: a chop per beat, some rolled as 16ths or 8ths (more often
+     at the end of a bar).
+   - **Half-time**: the original groove at half speed.
+   - **Reverse order**: the original rhythm, chops back to front.
+   - **Call & response**: bars 1 and 3 play the original, bars 2 and 4 a flip.
+
+   Each Flip it is kept: **◀ ▶** step through the last 20, and edits you make
+   to a flip stay with it. Chopping again starts a fresh list.
 8. **Export**:
    - **Chops .zip**: one WAV per chop with flips baked in, plus an MPC drum
      program (`.xpm`) in the same folder. Unzip, copy the folder to your MPC

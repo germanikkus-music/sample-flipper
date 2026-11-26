@@ -331,3 +331,4 @@ body.dragging .drop-overlay { display: flex; }
   .pads { gap: 6px; }
 }
 .check.small { font-size: 12px; color: var(--dim); }
+.flip-count { min-width: 30px; text-align: center; font-size: 12px; color: var(--dim); font-variant-numeric: tabular-nums; }

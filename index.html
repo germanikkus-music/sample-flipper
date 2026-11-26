@@ -124,7 +124,19 @@
       </div>
       <div class="group">
         <button id="patOriginal" class="btn ghost" disabled title="Place each chop where it falls in the original loop">Original</button>
-        <button id="patFlip" class="btn accent" disabled title="Random rearrangement">Flip it</button>
+        <select id="flipStyle" aria-label="Flip style" title="How Flip it rearranges pads A01-A16 (the current bank)">
+          <option value="random">Random</option>
+          <option value="shuffle">Shuffle</option>
+          <option value="stab">Chop &amp; stab</option>
+          <option value="stutter">Stutter</option>
+          <option value="half">Half-time</option>
+          <option value="reverse">Reverse order</option>
+          <option value="callresp">Call &amp; response</option>
+        </select>
+        <button id="patFlip" class="btn accent" disabled title="Make a new flip in the chosen style">Flip it</button>
+        <button id="flipPrev" class="btn icon" disabled aria-label="Previous flip" title="Previous flip">◀</button>
+        <span id="flipCount" class="flip-count"></span>
+        <button id="flipNext" class="btn icon" disabled aria-label="Next flip" title="Next flip">▶</button>
         <button id="patClear" class="btn ghost" disabled>Clear</button>
       </div>
     </div>
